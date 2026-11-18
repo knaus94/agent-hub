@@ -1,0 +1,51 @@
+.notifications-toggle {
+   display: grid;
+   flex: none;
+   place-items: center;
+   width: var(--size-touch);
+   height: var(--size-touch);
+   padding: 0;
+   border: 0;
+   border-radius: var(--radius-md);
+   background: transparent;
+   color: var(--color-text-faint);
+   cursor: pointer;
+   transition:
+      background var(--motion-fast) var(--ease-out),
+      color var(--motion-fast) var(--ease-out);
+}
+
+.notifications-toggle[data-state='on'] {
+   color: var(--color-accent);
+}
+
+@media (hover: hover) {
+   .notifications-toggle:hover:not(:disabled) {
+      background: var(--color-surface-hover);
+      color: var(--color-text);
+   }
+}
+
+.notifications-toggle:disabled {
+   opacity: 0.5;
+   cursor: default;
+}
+
+.notifications-toggle-icon {
+   width: var(--size-icon);
+   height: var(--size-icon);
+}
+
+.notifications-toggle-text {
+   margin: 0;
+   padding-inline: var(--space-2);
+   color: var(--color-text-muted);
+   font-size: var(--text-sm);
+   line-height: var(--leading-normal);
+}
+
+@media (prefers-reduced-motion: reduce) {
+   .notifications-toggle {
+      transition: none;
+   }
+}

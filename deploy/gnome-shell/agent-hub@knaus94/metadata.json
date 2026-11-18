@@ -1,0 +1,8 @@
+{
+  "uuid": "agent-hub@knaus94",
+  "name": "Agent Hub",
+  "description": "Turns agent-hub's public addresses on and off from the top bar and shows them while they are open: the chats address and open ports.",
+  "url": "https://github.com/knaus94/agent-hub",
+  "shell-version": ["50"],
+  "version": 1
+}

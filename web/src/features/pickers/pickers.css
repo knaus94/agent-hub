@@ -1,0 +1,200 @@
+.picker-title {
+   display: inline-flex;
+   align-items: center;
+   gap: var(--space-2);
+   max-width: 100%;
+   min-height: var(--size-touch);
+   padding: 0 var(--space-3);
+   border: 0;
+   border-radius: var(--radius-md);
+   background: transparent;
+   color: var(--color-text);
+   font: inherit;
+   cursor: pointer;
+   transition: background var(--motion-fast) var(--ease-out);
+}
+
+@media (hover: hover) {
+   .picker-title:hover:not(:disabled),
+   .picker-chip:hover:not(:disabled) {
+      background: var(--color-surface-hover);
+   }
+}
+
+.picker-title-name {
+   flex: none;
+   font-size: var(--text-md);
+   font-weight: 600;
+}
+
+.picker-title-detail {
+   min-width: 0;
+   overflow: hidden;
+   color: var(--color-text-faint);
+   font-size: var(--text-sm);
+   text-overflow: ellipsis;
+   white-space: nowrap;
+}
+
+.picker-chevron,
+.picker-chip-icon,
+.picker-option-check {
+   flex: none;
+   width: var(--size-icon);
+   height: var(--size-icon);
+}
+
+.picker-chevron {
+   color: var(--color-text-faint);
+}
+
+.picker-chip {
+   display: inline-flex;
+   align-items: center;
+   gap: var(--space-1);
+   max-width: 100%;
+   min-height: var(--size-mark);
+   padding: 0 var(--space-2);
+   border: 1px solid var(--color-border-strong);
+   border-radius: var(--radius-pill);
+   background: transparent;
+   color: var(--color-text-muted);
+   font: inherit;
+   font-size: var(--text-xs);
+   cursor: pointer;
+   transition: background var(--motion-fast) var(--ease-out);
+}
+
+.picker-row {
+   display: flex;
+   flex-wrap: wrap;
+   gap: var(--space-1);
+   min-width: 0;
+}
+
+.picker-chip-text {
+   min-width: 0;
+   overflow: hidden;
+   text-overflow: ellipsis;
+   white-space: nowrap;
+}
+
+.picker-options {
+   display: grid;
+   gap: var(--space-half);
+   margin: 0;
+   padding: 0;
+   list-style: none;
+}
+
+.picker-option {
+   display: flex;
+   align-items: center;
+   gap: var(--space-3);
+   width: 100%;
+   min-height: calc(var(--size-touch) + var(--space-2));
+   padding: var(--space-2) var(--space-3);
+   border: 0;
+   border-radius: var(--radius-md);
+   background: transparent;
+   color: var(--color-text);
+   font: inherit;
+   text-align: start;
+   cursor: pointer;
+}
+
+@media (hover: hover) {
+   .picker-option:hover {
+      background: var(--color-surface-hover);
+   }
+}
+
+.picker-option[aria-current='true'] {
+   background: var(--color-surface-raised);
+}
+
+.picker-option-icon {
+   flex: none;
+   width: var(--size-mark-icon);
+   height: var(--size-mark-icon);
+   color: var(--color-text-faint);
+}
+
+.picker-option-text {
+   display: grid;
+   flex: 1;
+   gap: var(--space-half);
+   min-width: 0;
+}
+
+.picker-option-name {
+   font-size: var(--text-sm);
+   font-weight: 600;
+}
+
+.picker-option-detail {
+   overflow: hidden;
+   color: var(--color-text-faint);
+   font-size: var(--text-xs);
+   text-overflow: ellipsis;
+   white-space: nowrap;
+}
+
+.picker-option-check {
+   color: var(--color-accent);
+}
+
+.picker-search {
+   display: flex;
+   align-items: center;
+   gap: var(--space-2);
+   margin-block-end: var(--space-2);
+   padding-inline: var(--space-3);
+   border: 1px solid var(--color-border-strong);
+   border-radius: var(--radius-md);
+   background: var(--color-surface-raised);
+   color: var(--color-text-faint);
+}
+
+.picker-search:focus-within {
+   border-color: var(--color-accent-line);
+}
+
+.picker-search-input {
+   flex: 1;
+   min-width: 0;
+   min-height: var(--size-touch);
+   border: 0;
+   outline: none;
+   background: transparent;
+   color: var(--color-text);
+   font: inherit;
+   font-size: var(--text-input);
+}
+
+.picker-search-clear {
+   display: grid;
+   place-items: center;
+   width: var(--size-mark);
+   height: var(--size-mark);
+   padding: 0;
+   border: 0;
+   border-radius: var(--radius-pill);
+   background: transparent;
+   color: var(--color-text-faint);
+   cursor: pointer;
+}
+
+.picker-empty {
+   margin: var(--space-4) 0;
+   color: var(--color-text-faint);
+   font-size: var(--text-sm);
+   text-align: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+   .picker-title,
+   .picker-chip {
+      transition: none;
+   }
+}

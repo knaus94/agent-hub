@@ -1,0 +1,119 @@
+.quick-manager {
+   display: grid;
+   gap: var(--space-3);
+}
+
+.quick-manager-empty {
+   margin: 0;
+   padding-inline: var(--space-2);
+   color: var(--color-text-muted);
+   font-size: var(--text-sm);
+}
+
+.quick-manager-list {
+   display: grid;
+   gap: var(--space-1);
+   margin: 0;
+   padding: 0;
+   list-style: none;
+}
+
+.quick-manager-item {
+   display: flex;
+   align-items: center;
+   gap: var(--space-2);
+   padding: var(--space-2) var(--space-2) var(--space-2) var(--space-3);
+   border-radius: var(--radius-md);
+   background: var(--color-surface-raised);
+}
+
+.quick-manager-body {
+   display: grid;
+   flex: 1;
+   gap: var(--space-half);
+   min-width: 0;
+}
+
+.quick-manager-name {
+   overflow: hidden;
+   font-size: var(--text-sm);
+   font-weight: 600;
+   text-overflow: ellipsis;
+   white-space: nowrap;
+}
+
+.quick-manager-text {
+   overflow: hidden;
+   color: var(--color-text-muted);
+   font-family: var(--font-mono);
+   font-size: var(--text-xs);
+   text-overflow: ellipsis;
+   white-space: nowrap;
+}
+
+.quick-manager-meta {
+   color: var(--color-text-faint);
+   font-size: var(--text-2xs);
+}
+
+.quick-manager-tools {
+   display: flex;
+   flex: none;
+}
+
+.quick-manager-tool {
+   display: grid;
+   place-items: center;
+   width: var(--size-touch);
+   height: var(--size-touch);
+   padding: 0;
+   border: 0;
+   border-radius: var(--radius-md);
+   background: transparent;
+   color: var(--color-text-faint);
+   cursor: pointer;
+}
+
+.quick-manager-tool:disabled {
+   opacity: 0.35;
+   cursor: default;
+}
+
+@media (hover: hover) {
+   .quick-manager-tool:hover:not(:disabled) {
+      background: var(--color-surface-hover);
+      color: var(--color-text);
+   }
+
+   .quick-manager-tool--danger:hover:not(:disabled) {
+      color: var(--color-danger);
+   }
+}
+
+.quick-manager-tool-icon {
+   width: var(--size-icon);
+   height: var(--size-icon);
+}
+
+.quick-manager-add {
+   display: inline-flex;
+   align-items: center;
+   justify-content: center;
+   gap: var(--space-2);
+   min-height: var(--size-touch);
+   border: 1px dashed var(--color-border-strong);
+   border-radius: var(--radius-md);
+   background: transparent;
+   color: var(--color-text);
+   font: inherit;
+   font-size: var(--text-sm);
+   font-weight: 600;
+   cursor: pointer;
+}
+
+@media (hover: hover) {
+   .quick-manager-add:hover {
+      border-color: var(--color-accent-line);
+      background: var(--color-surface-hover);
+   }
+}

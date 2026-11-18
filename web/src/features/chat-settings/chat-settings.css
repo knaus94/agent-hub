@@ -1,0 +1,85 @@
+.chat-settings {
+   display: grid;
+   gap: var(--space-4);
+}
+
+.chat-settings-section {
+   display: grid;
+   gap: var(--space-1);
+}
+
+.chat-settings-title {
+   margin: 0;
+   padding-inline: var(--space-3);
+   color: var(--color-text-faint);
+   font-size: var(--text-xs);
+   font-weight: 600;
+}
+
+.chat-settings-switch {
+   display: flex;
+   align-items: center;
+   gap: var(--space-3);
+   min-height: calc(var(--size-touch) + var(--space-2));
+   padding: var(--space-2) var(--space-3);
+   border-radius: var(--radius-md);
+   cursor: pointer;
+}
+
+@media (hover: hover) {
+   .chat-settings-switch:hover {
+      background: var(--color-surface-hover);
+   }
+}
+
+.chat-settings-switch-name {
+   flex: 1;
+   min-width: 0;
+   color: var(--color-text);
+   font-size: var(--text-sm);
+   font-weight: 600;
+}
+
+.chat-settings-switch-track {
+   position: relative;
+   flex: none;
+   width: var(--size-switch-width);
+   height: var(--size-switch-height);
+   border-radius: var(--radius-pill);
+   background: var(--color-surface-hover);
+   box-shadow: var(--shadow-ring);
+   transition: background var(--motion-fast) var(--ease-out);
+}
+
+.chat-settings-switch-track::after {
+   position: absolute;
+   inset-block-start: var(--space-half);
+   inset-inline-start: var(--space-half);
+   width: calc(var(--size-switch-height) - 2 * var(--space-half));
+   height: calc(var(--size-switch-height) - 2 * var(--space-half));
+   border-radius: var(--radius-pill);
+   background: var(--color-text);
+   content: '';
+   transition: transform var(--motion-fast) var(--ease-out);
+}
+
+.chat-settings-switch-input:checked + .chat-settings-switch-track {
+   background: var(--color-accent);
+   box-shadow: none;
+}
+
+.chat-settings-switch-input:checked + .chat-settings-switch-track::after {
+   transform: translateX(calc(var(--size-switch-width) - var(--size-switch-height)));
+}
+
+.chat-settings-switch-input:focus-visible + .chat-settings-switch-track {
+   outline: 2px solid var(--color-focus);
+   outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+   .chat-settings-switch-track,
+   .chat-settings-switch-track::after {
+      transition: none;
+   }
+}

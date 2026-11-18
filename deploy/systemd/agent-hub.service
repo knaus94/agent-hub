@@ -1,0 +1,10 @@
+[Unit]
+Description=agent-hub: watch and steer Zed agent chats from the web
+
+[Service]
+ExecStart=@AGENT_HUB@ serve
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=default.target

@@ -1,0 +1,30 @@
+.agent-mark {
+   display: grid;
+   flex: none;
+   place-items: center;
+   width: var(--size-mark);
+   height: var(--size-mark);
+   border-radius: var(--radius-md);
+   color: var(--color-agent-other);
+   background: var(--color-agent-other-soft);
+}
+
+.agent-mark[data-agent='claude'] {
+   color: var(--color-agent-claude);
+   background: var(--color-agent-claude-soft);
+}
+
+.agent-mark[data-agent='codex'] {
+   color: var(--color-agent-codex);
+   background: var(--color-agent-codex-soft);
+}
+
+.agent-mark[data-agent='opencode'] {
+   color: var(--color-agent-opencode);
+   background: var(--color-agent-opencode-soft);
+}
+
+.agent-mark-icon {
+   width: var(--size-mark-icon);
+   height: var(--size-mark-icon);
+}

@@ -1,0 +1,74 @@
+.command-menu {
+   position: absolute;
+   inset-inline: 0;
+   inset-block-end: calc(100% + var(--space-2));
+   z-index: var(--z-sticky);
+   display: grid;
+   gap: var(--space-half);
+   max-height: var(--size-command-menu);
+   margin: 0;
+   padding: var(--space-1);
+   overflow-y: auto;
+   overscroll-behavior: contain;
+   border: 1px solid var(--color-border-strong);
+   border-radius: var(--radius-lg);
+   background: var(--color-surface-raised);
+   box-shadow: var(--shadow-raised);
+   list-style: none;
+   animation: command-menu-in var(--motion-fast) var(--ease-out);
+}
+
+.command-menu-option {
+   display: grid;
+   gap: var(--space-half);
+   min-width: 0;
+   padding: var(--space-2) var(--space-3);
+   border-radius: var(--radius-md);
+   cursor: pointer;
+}
+
+.command-menu-option[aria-selected='true'] {
+   background: var(--color-surface-hover);
+}
+
+@media (hover: hover) {
+   .command-menu-option:hover {
+      background: var(--color-surface-hover);
+   }
+}
+
+.command-menu-name,
+.command-menu-description {
+   min-width: 0;
+   overflow: hidden;
+   text-overflow: ellipsis;
+   white-space: nowrap;
+}
+
+.command-menu-name {
+   color: var(--color-text);
+   font-family: var(--font-mono);
+   font-size: var(--text-sm);
+}
+
+.command-menu-hint,
+.command-menu-description {
+   color: var(--color-text-faint);
+}
+
+.command-menu-description {
+   font-size: var(--text-xs);
+}
+
+@keyframes command-menu-in {
+   from {
+      opacity: 0;
+      transform: translateY(var(--space-1));
+   }
+}
+
+@media (prefers-reduced-motion: reduce) {
+   .command-menu {
+      animation: none;
+   }
+}

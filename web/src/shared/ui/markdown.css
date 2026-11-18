@@ -1,0 +1,128 @@
+.md {
+   min-width: 0;
+   overflow-wrap: anywhere;
+}
+
+.md-paragraph {
+   margin-block: 0 var(--space-3);
+}
+
+.md-paragraph:last-child,
+.md-list:last-child,
+.md-pre:last-child {
+   margin-block-end: 0;
+}
+
+.md-link {
+   color: var(--color-accent);
+   text-decoration: underline;
+   text-decoration-color: var(--color-accent-line);
+   text-underline-offset: 3px;
+}
+
+.md-link:hover {
+   text-decoration-color: currentColor;
+}
+
+.md-list {
+   margin-block: 0 var(--space-3);
+   padding-inline-start: var(--space-6);
+}
+
+.md-item {
+   margin-block: var(--space-1);
+}
+
+.md-heading {
+   margin-block: var(--space-5) var(--space-2);
+   font-size: var(--text-lg);
+   line-height: var(--leading-tight);
+   font-weight: 650;
+}
+
+.md-heading--small {
+   font-size: var(--text-md);
+}
+
+.md-quote {
+   margin: 0 0 var(--space-3);
+   padding-inline-start: var(--space-4);
+   border-inline-start: 3px solid var(--color-border-strong);
+   color: var(--color-text-muted);
+}
+
+.md-rule {
+   margin-block: var(--space-5);
+   border: 0;
+   border-block-start: 1px solid var(--color-border);
+}
+
+.md-code {
+   padding: 1px var(--space-1);
+   border-radius: var(--radius-sm);
+   background: var(--color-surface-raised);
+   font-family: var(--font-mono);
+   font-size: 0.88em;
+}
+
+.md-pre {
+   margin: 0 0 var(--space-3);
+   padding: var(--space-3) var(--space-4);
+   overflow-x: auto;
+   border: 1px solid var(--color-border);
+   border-radius: var(--radius-md);
+   background: var(--color-surface-sunken);
+}
+
+.md-code-block {
+   font-family: var(--font-mono);
+   font-size: var(--text-sm);
+   line-height: var(--leading-normal);
+   white-space: pre;
+}
+
+.md-table-wrap {
+   margin-block-end: var(--space-3);
+   overflow-x: auto;
+}
+
+.md-table {
+   border-collapse: collapse;
+   font-size: var(--text-sm);
+}
+
+.md-cell {
+   padding: var(--space-2) var(--space-3);
+   border: 1px solid var(--color-border);
+   text-align: start;
+   vertical-align: top;
+}
+
+.md-cell--head {
+   background: var(--color-surface-raised);
+   font-weight: 600;
+}
+
+.md[data-caret='true'] > :last-child::after {
+   content: '';
+   display: inline-block;
+   width: var(--space-half);
+   height: 1.1em;
+   margin-inline-start: var(--space-half);
+   border-radius: var(--radius-pill);
+   background: var(--color-accent);
+   vertical-align: text-bottom;
+   animation: md-caret-blink 1s steps(1) infinite;
+}
+
+@keyframes md-caret-blink {
+   50% {
+      opacity: 0;
+   }
+}
+
+@media (prefers-reduced-motion: reduce) {
+   .md[data-caret='true'] > :last-child::after {
+      animation: none;
+   }
+}

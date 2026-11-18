@@ -1,0 +1,95 @@
+.hub-page {
+   position: relative;
+   display: grid;
+   grid-template-columns: minmax(0, 1fr);
+   height: 100dvh;
+   overflow: hidden;
+   isolation: isolate;
+}
+
+.hub-page[data-layout='split'] {
+   grid-template-columns: var(--size-sidebar) minmax(0, 1fr);
+}
+
+.hub-page-banner {
+   position: absolute;
+   z-index: var(--z-sticky);
+   inset-block-start: max(var(--space-3), env(safe-area-inset-top));
+   inset-inline: 0;
+   width: fit-content;
+   margin: 0 auto;
+   padding: var(--space-1) var(--space-4);
+   border: 1px solid var(--color-border-strong);
+   border-radius: var(--radius-pill);
+   background: var(--color-surface-raised);
+   box-shadow: var(--shadow-raised);
+   color: var(--color-text-muted);
+   font-size: var(--text-xs);
+}
+
+.hub-page-sidebar {
+   min-width: 0;
+   min-height: 0;
+   background: var(--color-surface);
+}
+
+.hub-page[data-layout='split'] .hub-page-sidebar {
+   border-inline-end: 1px solid var(--color-border);
+}
+
+.hub-page-main {
+   min-width: 0;
+   min-height: 0;
+}
+
+.hub-page-placeholder-screen {
+   display: flex;
+   flex-direction: column;
+   height: 100%;
+}
+
+.hub-page-placeholder {
+   flex: 1;
+   display: grid;
+   place-content: center;
+   justify-items: center;
+   gap: var(--space-2);
+   padding: var(--space-6);
+   text-align: center;
+}
+
+.hub-page-placeholder-icon {
+   width: var(--space-10);
+   height: var(--space-10);
+   margin-block-end: var(--space-2);
+   color: var(--color-text-faint);
+}
+
+.hub-page-placeholder-title {
+   margin: 0;
+   font-size: var(--text-lg);
+   font-weight: 600;
+}
+
+.hub-page-placeholder-body {
+   margin: 0;
+   color: var(--color-text-muted);
+   font-size: var(--text-sm);
+}
+
+.hub-page-placeholder-icon[data-waiting='true'] {
+   color: var(--color-accent);
+   animation: hub-page-spin 1s linear infinite;
+}
+
+@keyframes hub-page-spin {
+   to {
+      transform: rotate(360deg);
+   }
+}
+
+@media (prefers-reduced-motion: reduce) {
+   .hub-page-placeholder-icon[data-waiting='true'] {
+      animation: none;
+   }
+}

@@ -1,0 +1,7 @@
+.agent-message {
+   min-width: 0;
+   color: var(--color-text);
+   font-family: var(--font-reading);
+   font-size: var(--text-reading);
+   line-height: var(--leading-reading);
+}

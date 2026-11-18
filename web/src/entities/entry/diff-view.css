@@ -1,0 +1,76 @@
+.diff-view {
+   min-width: 0;
+   margin: 0;
+   overflow: hidden;
+   border: 1px solid var(--color-border);
+   border-radius: var(--radius-md);
+   background: var(--color-surface-sunken);
+}
+
+.diff-view-path {
+   display: flex;
+   min-width: 0;
+   padding: var(--space-1) var(--space-3);
+   border-block-end: 1px solid var(--color-border);
+   font-family: var(--font-mono);
+   font-size: var(--text-2xs);
+   white-space: nowrap;
+}
+
+.diff-view-dir {
+   min-width: 0;
+   overflow: hidden;
+   color: var(--color-text-faint);
+   text-overflow: ellipsis;
+   direction: rtl;
+   text-align: start;
+}
+
+.diff-view-name {
+   flex: none;
+   color: var(--color-text);
+}
+
+.diff-view-lines {
+   max-height: var(--size-output);
+   overflow: auto;
+   padding-block: var(--space-1);
+   font-family: var(--font-mono);
+   font-size: var(--text-xs);
+   line-height: var(--leading-normal);
+}
+
+.diff-view-line {
+   display: flex;
+   min-width: max-content;
+   padding-inline-end: var(--space-3);
+   color: var(--color-text-muted);
+}
+
+.diff-view-line[data-type='add'] {
+   background: var(--color-diff-add);
+   color: var(--color-diff-add-text);
+}
+
+.diff-view-line[data-type='remove'] {
+   background: var(--color-diff-remove);
+   color: var(--color-diff-remove-text);
+}
+
+.diff-view-sign {
+   flex: none;
+   width: var(--space-6);
+   text-align: center;
+   user-select: none;
+}
+
+.diff-view-text {
+   white-space: pre;
+}
+
+.diff-view-gap {
+   padding: var(--space-1) var(--space-6);
+   color: var(--color-text-faint);
+   font-family: var(--font-sans);
+   font-size: var(--text-2xs);
+}

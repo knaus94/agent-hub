@@ -1,0 +1,204 @@
+.tool-step {
+   display: grid;
+   grid-template-columns: var(--size-step-marker) minmax(0, 1fr);
+   gap: var(--space-3);
+   align-items: start;
+   min-width: 0;
+}
+
+.tool-step-marker {
+   position: relative;
+   z-index: var(--z-raised);
+   display: grid;
+   place-items: center;
+   width: var(--size-step-marker);
+   height: var(--size-step-marker);
+   margin-block-start: calc((var(--size-touch) - var(--size-step-marker)) / 2);
+   border: 1px solid var(--color-border-strong);
+   border-radius: var(--radius-pill);
+   background: var(--color-surface-raised);
+   color: var(--color-text-faint);
+   transition:
+      color var(--motion-base) var(--ease-out),
+      border-color var(--motion-base) var(--ease-out);
+}
+
+.tool-step[data-status='in_progress'] .tool-step-marker,
+.tool-step[data-status='pending'] .tool-step-marker {
+   border-color: var(--color-accent-line);
+   color: var(--color-accent);
+   animation: tool-step-ring 1.6s var(--ease-out) infinite;
+}
+
+.tool-step[data-status='failed'] .tool-step-marker {
+   border-color: var(--color-danger-soft);
+   color: var(--color-danger);
+}
+
+.tool-step-icon {
+   width: var(--size-step-icon);
+   height: var(--size-step-icon);
+}
+
+.tool-step-card {
+   min-width: 0;
+}
+
+.tool-step-summary {
+   display: flex;
+   align-items: center;
+   gap: var(--space-2);
+   min-width: 0;
+   min-height: var(--size-touch);
+   margin-inline-start: calc(-1 * var(--space-2));
+   padding-inline: var(--space-2);
+   border-radius: var(--radius-md);
+   color: var(--color-text-muted);
+   font-size: var(--text-sm);
+}
+
+.tool-step-summary--toggle {
+   list-style: none;
+   cursor: pointer;
+   transition: background var(--motion-fast) var(--ease-out);
+}
+
+.tool-step-summary--toggle::-webkit-details-marker {
+   display: none;
+}
+
+@media (hover: hover) {
+   .tool-step-summary--toggle:hover {
+      background: var(--color-surface-hover);
+   }
+}
+
+.tool-step-title {
+   flex: 1;
+   min-width: 0;
+   overflow: hidden;
+   color: var(--color-text);
+   text-overflow: ellipsis;
+   white-space: nowrap;
+}
+
+.tool-step-title[data-mono='true'] {
+   font-family: var(--font-mono);
+   font-size: var(--text-xs);
+}
+
+.tool-step-exit {
+   flex: none;
+   color: var(--color-danger);
+   font-size: var(--text-2xs);
+   font-variant-numeric: tabular-nums;
+}
+
+.tool-step-status {
+   display: grid;
+   flex: none;
+   place-items: center;
+   color: var(--color-accent);
+}
+
+.tool-step-status[data-status='completed'] {
+   color: var(--color-success);
+}
+
+.tool-step-status[data-status='failed'] {
+   color: var(--color-danger);
+}
+
+.tool-step-status-icon,
+.tool-step-chevron {
+   flex: none;
+   width: var(--size-icon);
+   height: var(--size-icon);
+}
+
+.tool-step-status-icon--spin {
+   animation: tool-step-spin 1s linear infinite;
+}
+
+/* The icon is replaced when the step finishes, so this plays once at that moment. */
+.tool-step-status-icon--done {
+   animation: tool-step-pop var(--motion-slow) var(--ease-spring);
+}
+
+.tool-step-chevron {
+   color: var(--color-text-faint);
+   transition: transform var(--motion-base) var(--ease-out);
+}
+
+.tool-step-card[open] .tool-step-chevron {
+   transform: rotate(180deg);
+}
+
+.tool-step-body {
+   display: grid;
+   gap: var(--space-2);
+   min-width: 0;
+   padding-block: var(--space-1) var(--space-2);
+   animation: tool-step-reveal var(--motion-base) var(--ease-out);
+}
+
+.tool-step-command,
+.tool-step-text {
+   margin: 0;
+   padding: var(--space-2) var(--space-3);
+   overflow: auto;
+   max-height: var(--size-output);
+   border-radius: var(--radius-md);
+   background: var(--color-surface-sunken);
+   color: var(--color-text-muted);
+   font-family: var(--font-mono);
+   font-size: var(--text-xs);
+   line-height: var(--leading-normal);
+   white-space: pre-wrap;
+   overflow-wrap: anywhere;
+}
+
+@keyframes tool-step-spin {
+   to {
+      transform: rotate(360deg);
+   }
+}
+
+@keyframes tool-step-pop {
+   from {
+      opacity: 0;
+      transform: scale(0.4);
+   }
+}
+
+@keyframes tool-step-ring {
+   0% {
+      box-shadow: 0 0 0 0 var(--color-accent-line);
+   }
+   100% {
+      box-shadow: 0 0 0 var(--space-2) transparent;
+   }
+}
+
+@keyframes tool-step-reveal {
+   from {
+      opacity: 0;
+      transform: translateY(calc(-1 * var(--space-1)));
+   }
+}
+
+@media (prefers-reduced-motion: reduce) {
+   .tool-step-marker,
+   .tool-step-summary--toggle,
+   .tool-step-chevron {
+      transition: none;
+   }
+
+   .tool-step[data-status='in_progress'] .tool-step-marker,
+   .tool-step[data-status='pending'] .tool-step-marker,
+   .tool-step-status-icon--spin,
+   .tool-step-status-icon--done,
+   .tool-step-body {
+      animation: none;
+   }
+}

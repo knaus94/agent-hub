@@ -1,0 +1,12 @@
+[Unit]
+Description=agent-hub: public HTTPS address through a Cloudflare tunnel
+After=agent-hub.service
+
+[Service]
+# Runs cloudflared for the address `agent-hub domain` set, or for an anonymous one that changes on every start.
+ExecStart=@AGENT_HUB@ tunnel
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target

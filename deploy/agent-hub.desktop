@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Agent Hub
+Comment=Удалённый доступ к чатам агентов Zed с телефона
+Exec=@AGENT_HUB@ up
+Icon=agent-hub
+Terminal=false
+StartupNotify=false
+Categories=Development;
+Keywords=zed;agent;tunnel;phone;

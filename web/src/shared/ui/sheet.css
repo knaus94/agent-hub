@@ -1,0 +1,99 @@
+.sheet {
+   /* A modal dialog scrolls by default; the panel rising from below would be scrolled to instead of seen rising. */
+   overflow: clip;
+   inset: 0;
+   width: 100%;
+   max-width: none;
+   height: 100%;
+   max-height: none;
+   margin: 0;
+   padding: 0;
+   border: 0;
+   background: transparent;
+   color: var(--color-text);
+}
+
+.sheet::backdrop {
+   background: var(--color-scrim);
+   animation: sheet-fade var(--motion-slow) var(--ease-out);
+}
+
+.sheet-panel {
+   position: absolute;
+   inset-inline: 0;
+   inset-block-end: 0;
+   display: flex;
+   flex-direction: column;
+   max-height: var(--size-sheet-max);
+   padding: var(--space-2) var(--space-4) max(var(--space-4), env(safe-area-inset-bottom));
+   border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+   background: var(--color-surface);
+   box-shadow: var(--shadow-sheet);
+   outline: none;
+   animation: sheet-rise var(--motion-slow) var(--ease-out);
+}
+
+.sheet-grip {
+   align-self: center;
+   width: var(--space-10);
+   height: var(--space-1);
+   margin-block-end: var(--space-3);
+   border-radius: var(--radius-pill);
+   background: var(--color-border-strong);
+}
+
+.sheet-title {
+   margin: 0 0 var(--space-3);
+   color: var(--color-text-muted);
+   font-size: var(--text-sm);
+   font-weight: 600;
+   text-align: center;
+}
+
+.sheet-body {
+   min-height: 0;
+   overflow-y: auto;
+   overscroll-behavior: contain;
+}
+
+@media (min-width: 600px) {
+   .sheet-panel {
+      inset: auto;
+      inset-block-start: 50%;
+      inset-inline-start: 50%;
+      width: min(var(--size-login), calc(100% - var(--space-8)));
+      border-radius: var(--radius-xl);
+      transform: translate(-50%, -50%);
+      animation-name: sheet-appear;
+   }
+
+   .sheet-grip {
+      display: none;
+   }
+}
+
+@keyframes sheet-fade {
+   from {
+      opacity: 0;
+   }
+}
+
+@keyframes sheet-rise {
+   from {
+      transform: translateY(100%);
+   }
+}
+
+@keyframes sheet-appear {
+   from {
+      opacity: 0;
+      transform: translate(-50%, -48%) scale(0.98);
+   }
+}
+
+@media (prefers-reduced-motion: reduce) {
+   .sheet::backdrop,
+   .sheet-panel {
+      animation: none;
+   }
+}

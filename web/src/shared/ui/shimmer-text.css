@@ -1,0 +1,25 @@
+.shimmer-text {
+   background: linear-gradient(90deg, var(--color-text-faint) 20%, var(--color-text) 50%, var(--color-text-faint) 80%);
+   background-size: 220% 100%;
+   background-clip: text;
+   -webkit-background-clip: text;
+   color: transparent;
+   animation: shimmer-text-sweep 2s linear infinite;
+}
+
+@keyframes shimmer-text-sweep {
+   from {
+      background-position: 120% 0;
+   }
+   to {
+      background-position: -120% 0;
+   }
+}
+
+@media (prefers-reduced-motion: reduce) {
+   .shimmer-text {
+      animation: none;
+      background: none;
+      color: var(--color-text-muted);
+   }
+}

@@ -1,0 +1,68 @@
+.quick-bar {
+   display: flex;
+   gap: var(--space-2);
+   margin-block-end: var(--space-2);
+   overflow-x: auto;
+   overscroll-behavior-x: contain;
+   scrollbar-width: none;
+}
+
+.quick-bar::-webkit-scrollbar {
+   display: none;
+}
+
+.quick-bar-action {
+   display: inline-flex;
+   flex: none;
+   align-items: center;
+   gap: var(--space-1);
+   max-width: var(--size-quick-action);
+   min-height: var(--size-mark);
+   padding: 0 var(--space-3);
+   border: 1px solid var(--color-border-strong);
+   border-radius: var(--radius-pill);
+   background: var(--color-surface-raised);
+   color: var(--color-text);
+   font: inherit;
+   font-size: var(--text-sm);
+   cursor: pointer;
+   transition:
+      background var(--motion-fast) var(--ease-out),
+      border-color var(--motion-fast) var(--ease-out);
+}
+
+@media (hover: hover) {
+   .quick-bar-action:hover:not(:disabled) {
+      border-color: var(--color-accent-line);
+      background: var(--color-surface-hover);
+   }
+}
+
+.quick-bar-action:active:not(:disabled) {
+   background: var(--color-surface-hover);
+}
+
+.quick-bar-action:disabled {
+   opacity: 0.5;
+   cursor: default;
+}
+
+.quick-bar-icon {
+   flex: none;
+   width: var(--size-icon);
+   height: var(--size-icon);
+   color: var(--color-accent);
+}
+
+.quick-bar-label {
+   min-width: 0;
+   overflow: hidden;
+   text-overflow: ellipsis;
+   white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+   .quick-bar-action {
+      transition: none;
+   }
+}

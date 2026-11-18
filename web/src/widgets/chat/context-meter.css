@@ -1,0 +1,63 @@
+.context-meter {
+   display: inline-flex;
+   flex: none;
+   align-items: center;
+   gap: var(--space-1);
+   padding: var(--space-half) var(--space-2) var(--space-half) var(--space-1);
+   border-radius: var(--radius-pill);
+   background: var(--color-surface-raised);
+   color: var(--color-text-muted);
+   font-size: var(--text-2xs);
+   font-variant-numeric: tabular-nums;
+   line-height: var(--leading-tight);
+   --context-meter-color: var(--color-accent);
+}
+
+.context-meter[data-level='high'] {
+   --context-meter-color: var(--color-warning);
+}
+
+.context-meter[data-level='full'] {
+   background: var(--color-danger-soft);
+   --context-meter-color: var(--color-danger);
+}
+
+.context-meter-ring {
+   width: var(--size-icon);
+   height: var(--size-icon);
+   /* The fill starts at twelve o'clock. */
+   transform: rotate(-90deg);
+}
+
+.context-meter-track,
+.context-meter-fill {
+   fill: none;
+   stroke-width: 3;
+}
+
+.context-meter-track {
+   stroke: var(--color-border-strong);
+}
+
+.context-meter-fill {
+   stroke: var(--context-meter-color);
+   stroke-linecap: round;
+   transition:
+      stroke-dasharray var(--motion-slow) var(--ease-out),
+      stroke var(--motion-base) var(--ease-out);
+}
+
+.context-meter-percent {
+   color: var(--context-meter-color);
+   font-weight: 600;
+}
+
+.context-meter-tokens {
+   color: var(--color-text-faint);
+}
+
+@media (prefers-reduced-motion: reduce) {
+   .context-meter-fill {
+      transition: none;
+   }
+}

@@ -1,0 +1,100 @@
+.login-page {
+   display: grid;
+   place-items: center;
+   min-height: 100dvh;
+   padding: var(--space-6);
+}
+
+.login-card {
+   display: grid;
+   gap: var(--space-3);
+   width: min(var(--size-login), 100%);
+   padding: var(--space-8) var(--space-6);
+   border: 1px solid var(--color-border);
+   border-radius: var(--radius-xl);
+   background: var(--color-surface);
+   box-shadow: var(--shadow-raised);
+}
+
+.login-logo {
+   width: var(--space-6);
+   height: var(--space-6);
+   margin-block-end: var(--space-2);
+   border-radius: var(--radius-pill);
+   background: var(--color-accent);
+   box-shadow: var(--shadow-logo);
+}
+
+.login-title {
+   margin: 0;
+   font-size: var(--text-xl);
+   line-height: var(--leading-tight);
+}
+
+.login-hint {
+   margin: 0 0 var(--space-2);
+   color: var(--color-text-muted);
+   font-size: var(--text-sm);
+}
+
+.login-label {
+   font-size: var(--text-sm);
+   font-weight: 550;
+}
+
+.login-input {
+   min-height: var(--size-touch);
+   padding: var(--space-2) var(--space-3);
+   border: 1px solid var(--color-border-strong);
+   border-radius: var(--radius-md);
+   background: var(--color-surface-sunken);
+   color: var(--color-text);
+   font: inherit;
+   font-family: var(--font-mono);
+   font-size: var(--text-input);
+}
+
+.login-input:focus-visible {
+   border-color: var(--color-accent-line);
+}
+
+.login-input[aria-invalid='true'] {
+   border-color: var(--color-danger);
+}
+
+.login-error {
+   margin: 0;
+   color: var(--color-danger);
+   font-size: var(--text-sm);
+}
+
+.login-submit {
+   min-height: var(--size-touch);
+   margin-block-start: var(--space-2);
+   border: 0;
+   border-radius: var(--radius-md);
+   background: var(--color-accent);
+   color: var(--color-on-accent);
+   font: inherit;
+   font-weight: 600;
+   cursor: pointer;
+   transition: background var(--motion-fast) var(--ease-out);
+}
+
+@media (hover: hover) {
+   .login-submit:hover:not(:disabled) {
+      background: var(--color-accent-strong);
+   }
+}
+
+.login-submit:disabled {
+   background: var(--color-surface-hover);
+   color: var(--color-text-faint);
+   cursor: default;
+}
+
+@media (prefers-reduced-motion: reduce) {
+   .login-submit {
+      transition: none;
+   }
+}

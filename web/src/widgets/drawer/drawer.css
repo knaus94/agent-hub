@@ -1,0 +1,47 @@
+.drawer {
+   inset: 0;
+   width: 100%;
+   max-width: none;
+   height: 100%;
+   max-height: none;
+   margin: 0;
+   padding: 0;
+   border: 0;
+   background: transparent;
+   color: var(--color-text);
+}
+
+.drawer::backdrop {
+   background: var(--color-scrim);
+   animation: drawer-fade var(--motion-slow) var(--ease-out);
+}
+
+.drawer-panel {
+   position: absolute;
+   outline: none;
+   inset-block: 0;
+   inset-inline-start: 0;
+   width: var(--size-drawer);
+   background: var(--color-surface);
+   box-shadow: var(--shadow-raised);
+   animation: drawer-slide var(--motion-slow) var(--ease-out);
+}
+
+@keyframes drawer-slide {
+   from {
+      transform: translateX(-100%);
+   }
+}
+
+@keyframes drawer-fade {
+   from {
+      opacity: 0;
+   }
+}
+
+@media (prefers-reduced-motion: reduce) {
+   .drawer::backdrop,
+   .drawer-panel {
+      animation: none;
+   }
+}

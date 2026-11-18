@@ -1,0 +1,117 @@
+.thought {
+   min-width: 0;
+   color: var(--color-thought);
+   font-size: var(--text-sm);
+}
+
+.thought-header,
+.thought-toggle {
+   display: inline-flex;
+   align-items: center;
+   gap: var(--space-2);
+   margin: 0;
+   color: var(--color-text-faint);
+   font-size: var(--text-sm);
+}
+
+.thought-toggle {
+   min-height: var(--size-touch);
+   margin-block: calc((1lh - var(--size-touch)) / 2);
+   margin-inline-start: calc(-1 * var(--space-2));
+   padding: 0 var(--space-2);
+   border: 0;
+   border-radius: var(--radius-md);
+   background: transparent;
+   font-family: inherit;
+   line-height: inherit;
+   cursor: pointer;
+   transition:
+      background var(--motion-fast) var(--ease-out),
+      color var(--motion-fast) var(--ease-out);
+}
+
+@media (hover: hover) {
+   .thought-toggle:hover {
+      background: var(--color-surface-hover);
+      color: var(--color-text-muted);
+   }
+}
+
+.thought-icon,
+.thought-chevron {
+   flex: none;
+   width: var(--size-icon);
+   height: var(--size-icon);
+}
+
+.thought-icon--live {
+   animation: thought-breathe 1.8s var(--ease-out) infinite;
+}
+
+.thought-chevron {
+   transition: transform var(--motion-base) var(--ease-out);
+}
+
+.thought[data-open='true'] .thought-chevron {
+   transform: rotate(180deg);
+}
+
+.thought-body,
+.thought-live {
+   margin-block-start: var(--space-2);
+   padding-inline-start: var(--space-4);
+   border-inline-start: 2px solid var(--color-thought-line);
+}
+
+.thought-body[data-clipped='true'][data-open='false'] {
+   max-height: var(--size-thought-preview);
+   overflow: hidden;
+   cursor: pointer;
+   mask-image: linear-gradient(to bottom, var(--mask-opaque) 45%, transparent);
+}
+
+/* The newest lines stay in view while the agent is still thinking; older ones fade out at the top. */
+.thought-live {
+   display: flex;
+   flex-direction: column-reverse;
+   max-height: var(--size-thought-live);
+   overflow: hidden;
+}
+
+.thought-live[data-clipped='true'] {
+   mask-image: linear-gradient(to bottom, transparent, var(--mask-opaque) 35%);
+}
+
+.thought-live-text {
+   animation: thought-live-in var(--motion-enter) var(--ease-out);
+}
+
+@keyframes thought-breathe {
+   0%,
+   100% {
+      opacity: 1;
+      transform: scale(1);
+   }
+   50% {
+      opacity: 0.55;
+      transform: scale(0.9);
+   }
+}
+
+@keyframes thought-live-in {
+   from {
+      opacity: 0;
+   }
+}
+
+@media (prefers-reduced-motion: reduce) {
+   .thought-icon--live,
+   .thought-live-text {
+      animation: none;
+   }
+
+   .thought-toggle,
+   .thought-chevron {
+      transition: none;
+   }
+}

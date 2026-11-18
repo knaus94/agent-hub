@@ -1,0 +1,152 @@
+.composer {
+   position: relative;
+   min-width: 0;
+}
+
+.composer-fieldset {
+   min-width: 0;
+   margin: 0;
+   padding: 0;
+   border: 0;
+}
+
+.composer-box {
+   position: relative;
+   display: grid;
+   gap: var(--space-1);
+   padding: var(--space-3) var(--space-3) var(--space-2) var(--space-4);
+   border: 1px solid var(--color-border-strong);
+   border-radius: var(--radius-xl);
+   background: var(--color-surface-raised);
+   box-shadow: var(--shadow-raised);
+   transition: border-color var(--motion-fast) var(--ease-out);
+}
+
+.composer-box:focus-within,
+.composer-box[data-running='true'] {
+   border-color: var(--color-accent-line);
+}
+
+.composer-fieldset:disabled .composer-box {
+   opacity: 0.6;
+}
+
+.composer-input {
+   width: 100%;
+   min-width: 0;
+   max-height: var(--size-composer-max);
+   padding: var(--space-1) 0;
+   border: 0;
+   outline: none;
+   background: transparent;
+   color: var(--color-text);
+   font: inherit;
+   font-size: var(--text-input);
+   line-height: var(--leading-normal);
+   resize: none;
+}
+
+.composer-input::placeholder {
+   color: var(--color-text-faint);
+}
+
+.composer-toolbar {
+   display: flex;
+   align-items: flex-end;
+   gap: var(--space-2);
+   min-width: 0;
+}
+
+.composer-accessory {
+   flex: 1;
+   min-width: 0;
+}
+
+.composer-send,
+.composer-stop {
+   display: grid;
+   flex: none;
+   place-items: center;
+   width: var(--size-mark);
+   height: var(--size-mark);
+   padding: 0;
+   border: 0;
+   border-radius: var(--radius-md);
+   cursor: pointer;
+   transition:
+      background var(--motion-fast) var(--ease-out),
+      transform var(--motion-fast) var(--ease-out);
+}
+
+.composer-send {
+   background: var(--color-accent);
+   color: var(--color-on-accent);
+}
+
+@media (hover: hover) {
+   .composer-send:hover:not(:disabled) {
+      background: var(--color-accent-strong);
+   }
+
+   .composer-stop:hover {
+      background: var(--color-surface-hover);
+   }
+}
+
+.composer-send:active:not(:disabled),
+.composer-stop:active {
+   transform: scale(0.92);
+}
+
+.composer-send:disabled {
+   background: var(--color-surface-hover);
+   color: var(--color-text-faint);
+   cursor: default;
+}
+
+.composer-stop {
+   background: var(--color-surface);
+   color: var(--color-text);
+   box-shadow: var(--shadow-ring);
+}
+
+.composer-send-icon {
+   width: var(--size-mark-icon);
+   height: var(--size-mark-icon);
+}
+
+.composer-stop-icon {
+   width: var(--size-icon);
+   height: var(--size-icon);
+   fill: currentColor;
+}
+
+.composer-hint {
+   margin: var(--space-2) 0 0;
+   color: var(--color-text-faint);
+   font-size: var(--text-2xs);
+   text-align: center;
+}
+
+.composer-hint[data-kind='note'] {
+   color: var(--color-warning);
+}
+
+@media (pointer: coarse) {
+   .composer-hint[data-kind='keys'] {
+      display: none;
+   }
+}
+
+@media (prefers-reduced-motion: reduce) {
+   .composer-box,
+   .composer-send,
+   .composer-stop {
+      transition: none;
+   }
+
+   .composer-send:active:not(:disabled),
+   .composer-stop:active {
+      transform: none;
+   }
+}

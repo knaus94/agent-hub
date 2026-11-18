@@ -1,0 +1,116 @@
+:root {
+   color-scheme: dark;
+
+   --color-bg: #262624;
+   --color-surface: #1f1e1d;
+   --color-surface-raised: #30302e;
+   --color-surface-hover: #3a3936;
+   --color-surface-sunken: #1a1918;
+   --color-border: #3a3936;
+   --color-border-strong: #4a4944;
+   --color-text: #f5f4ef;
+   --color-text-muted: #c3c1b8;
+   --color-text-faint: #8f8d85;
+   --color-accent: #d97757;
+   --color-accent-strong: #c6613f;
+   --color-accent-soft: #d977571f;
+   --color-accent-line: #d9775766;
+   --color-on-accent: #fffaf5;
+   --color-user-bubble: #141413;
+   --color-success: #4ade80;
+   --color-danger: #f87171;
+   --color-danger-soft: #f871711a;
+   --color-warning: #fbbf24;
+   --color-warning-soft: #fbbf241a;
+   --color-diff-add: #4ade801a;
+   --color-diff-add-text: #86efac;
+   --color-diff-remove: #f871711a;
+   --color-diff-remove-text: #fca5a5;
+   --color-focus: #e8a487;
+   --color-thought: #a8a69d;
+   --color-thought-soft: #a8a69d14;
+   --color-thought-line: #4a4944;
+   --color-rail: #44433f;
+   --mask-opaque: #000;
+   --color-agent-claude: #e08a64;
+   --color-agent-claude-soft: #e08a6424;
+   --color-agent-codex: #7dd3c0;
+   --color-agent-codex-soft: #7dd3c024;
+   --color-agent-opencode: #b4a3f5;
+   --color-agent-opencode-soft: #b4a3f524;
+   --color-agent-other: #c3c1b8;
+   --color-agent-other-soft: #a2a9b824;
+
+   --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, Ubuntu, sans-serif;
+   /* Agent replies read like the Claude app: a book face for long text. */
+   --font-reading: ui-serif, 'New York', Georgia, 'Noto Serif', 'Times New Roman', serif;
+   --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+
+   --text-2xs: 11px;
+   --text-xs: 12px;
+   --text-sm: 13px;
+   --text-md: 15px;
+   --text-lg: 17px;
+   --text-reading: 16px;
+   /* iOS Safari zooms the page into any field whose text is smaller than 16px. */
+   --text-input: 16px;
+   --text-greeting: 28px;
+   --text-xl: 22px;
+   --leading-tight: 1.3;
+   --leading-normal: 1.6;
+   --leading-reading: 1.65;
+
+   --space-half: 2px;
+   --space-1: 4px;
+   --space-2: 8px;
+   --space-3: 12px;
+   --space-4: 16px;
+   --space-5: 20px;
+   --space-6: 24px;
+   --space-8: 32px;
+   --space-10: 40px;
+
+   --radius-sm: 6px;
+   --radius-md: 10px;
+   --radius-lg: 14px;
+   --radius-xl: 20px;
+   --radius-pill: 999px;
+
+   --shadow-raised: 0 12px 32px #00000073;
+   --shadow-sheet: 0 -12px 40px #00000080;
+   --color-scrim: #0d0d0c99;
+   --shadow-accent: 0 6px 20px #d9775740;
+   --shadow-logo: 0 0 0 4px var(--color-accent-soft);
+   --shadow-ring: inset 0 0 0 1px var(--color-border-strong);
+
+   --size-touch: 40px;
+   --size-icon: 16px;
+   --size-mark: 34px;
+   --size-mark-icon: 18px;
+   --size-dot: 8px;
+   --size-sidebar: 300px;
+   --size-drawer: min(86vw, 340px);
+   --size-sheet-max: 70dvh;
+   --size-content: 780px;
+   --size-login: 400px;
+   --size-output: 320px;
+   --size-composer-max: 200px;
+   --size-command-menu: min(320px, 40dvh);
+   --size-quick-action: 220px;
+   --size-switch-width: 44px;
+   --size-switch-height: 26px;
+   --size-thought-preview: 64px;
+   --size-thought-live: 168px;
+   --size-step-marker: 28px;
+   --size-step-icon: 14px;
+
+   --z-raised: 1;
+   --z-sticky: 2;
+
+   --motion-fast: 160ms;
+   --motion-base: 240ms;
+   --motion-enter: 320ms;
+   --motion-slow: 380ms;
+   --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+   --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
