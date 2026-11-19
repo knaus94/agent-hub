@@ -299,7 +299,7 @@ func (s *Server) notify(alerts []Alert) {
 	for _, alert := range alerts {
 		watching := map[string]bool{}
 		for c := range s.clients {
-			if c.authed && c.visible && c.open == alert.SessionID {
+			if c.authed && c.visible && slices.Contains(c.open, alert.SessionID) {
 				watching[c.pushDevice()] = true
 			}
 		}

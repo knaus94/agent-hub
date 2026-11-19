@@ -2,9 +2,9 @@ import { X } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import type { SessionSummary } from '../../shared/protocol.ts';
 import { useHub } from '../../entities/hub/hub-store';
+import { ChatSessionId } from '../../entities/session/chat-session';
 import { Composer } from '../../features/composer/composer';
 import { ChatSettings } from '../../features/chat-settings/chat-settings';
-import { FileViewer } from '../../features/file-viewer/file-viewer';
 import { QuickBar } from '../../features/quick-actions/quick-bar';
 import { QuickManager } from '../../features/quick-actions/quick-manager';
 import { TransferSheet } from '../../features/transfer/transfer-sheet';
@@ -16,14 +16,22 @@ import { PlanPanel } from './plan-panel';
 import { Timeline } from './timeline';
 import './chat.css';
 
+const NONE: never[] = [];
+
 function FailureBar({ sessionId }: { sessionId: string }) {
-   const failure = useHub((state) => state.failure);
+   const failure = useHub((state) => state.failures[sessionId]);
    const dismiss = useHub((state) => state.dismissFailure);
-   if (failure?.sessionId !== sessionId) return null;
+   if (!failure) return null;
    return (
       <div className="chat-failure" role="alert">
          <span className="chat-failure-text">{t(`failed.${failure.reason}`)}</span>
-         <button className="chat-failure-dismiss" type="button" onClick={dismiss} aria-label={t('failed.dismiss')} title={t('failed.dismiss')}>
+         <button
+            className="chat-failure-dismiss"
+            type="button"
+            onClick={() => dismiss(sessionId)}
+            aria-label={t('failed.dismiss')}
+            title={t('failed.dismiss')}
+         >
             <X className="chat-failure-icon" aria-hidden="true" />
          </button>
       </div>
@@ -31,15 +39,15 @@ function FailureBar({ sessionId }: { sessionId: string }) {
 }
 
 export function Chat({ session }: { session: SessionSummary }) {
-   const entries = useHub((state) => state.entries);
-   const entriesStart = useHub((state) => state.entriesStart);
+   const chat = useHub((state) => state.chats[session.id]);
    const loadOlder = useHub((state) => state.loadOlder);
    const send = useHub((state) => state.send);
    const cancel = useHub((state) => state.cancel);
-   const commands = useHub((state) => state.commands);
-   const options = useHub((state) => state.options);
    const configure = useHub((state) => state.configure);
-   const failure = useHub((state) => state.failure);
+   const failure = useHub((state) => state.failures[session.id]);
+   const entries = chat?.entries ?? null;
+   const commands = chat?.commands ?? NONE;
+   const options = chat?.options ?? NONE;
    const voice = useHub((state) => state.voice);
    const openFile = useHub((state) => state.openFile);
    // Kept the same between renders: every message reads it, and a new one would draw them all again.
@@ -52,28 +60,29 @@ export function Chat({ session }: { session: SessionSummary }) {
    const [typing, setTyping] = useState(false);
    const docked = !reading || typing;
    const lastUser = entries?.findLast((entry) => entry.kind === 'user');
-   if (queued && ((lastUser?.kind === 'user' && lastUser.text.trim() === queued) || failure?.sessionId === session.id)) setQueued(null);
+   if (queued && ((lastUser?.kind === 'user' && lastUser.text.trim() === queued) || failure)) setQueued(null);
 
    const onSend = (text: string) => {
       const name = text.trim().split(/\s/)[0];
       if (running && commands.some((command) => `/${command.name}` === name)) setQueued(text.trim());
-      send(text);
+      send(session.id, text);
    };
 
    return (
       <section className="chat">
          <ChatHeader session={session} />
          <TransferSheet session={session} />
-         <FileViewer />
-         <MarkdownFiles.Provider value={files}>
-            <Timeline
-               entries={entries}
-               start={entriesStart}
-               session={session}
-               onOlder={loadOlder}
-               onFollow={(following) => setReading(!following)}
-            />
-         </MarkdownFiles.Provider>
+         <ChatSessionId.Provider value={session.id}>
+            <MarkdownFiles.Provider value={files}>
+               <Timeline
+                  entries={entries}
+                  start={chat?.start ?? 0}
+                  session={session}
+                  onOlder={() => loadOlder(session.id)}
+                  onFollow={(following) => setReading(!following)}
+               />
+            </MarkdownFiles.Provider>
+         </ChatSessionId.Provider>
          <div
             className="chat-dock"
             data-docked={docked}
@@ -90,7 +99,7 @@ export function Chat({ session }: { session: SessionSummary }) {
                   sendLabel={t(running ? 'composer.steer' : 'composer.send')}
                   onSend={onSend}
                   running={running}
-                  onStop={cancel}
+                  onStop={() => cancel(session.id)}
                   disabled={!session.online}
                   note={!session.online ? t('composer.offline') : queued ? t('composer.queued', { command: queued.split(/\s/)[0] }) : null}
                   commands={commands}

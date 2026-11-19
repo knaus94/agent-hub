@@ -1,7 +1,8 @@
 import { CircleCheck, CircleHelp, CircleSlash, ExternalLink, ShieldQuestion } from 'lucide-react';
-import { useId, useState, type FormEvent } from 'react';
+import { useContext, useId, useState, type FormEvent } from 'react';
 import type { QuestionEntry, QuestionField, QuestionResponse } from '../../shared/protocol.ts';
 import { useHub } from '../hub/hub-store';
+import { ChatSessionId } from '../session/chat-session';
 import { t } from '../../shared/i18n';
 import './question-card.css';
 
@@ -73,8 +74,9 @@ function Field({
 
 // An agent waiting for the user. Whoever answers first, here or in Zed, settles it; the card then shows the answer.
 export function QuestionCard({ entry }: { entry: QuestionEntry }) {
+   const sessionId = useContext(ChatSessionId);
    const answer = useHub((state) => state.answer);
-   const failed = useHub((state) => state.failure?.reason === 'answer-failed');
+   const failed = useHub((state) => state.failures[sessionId]?.reason === 'answer-failed');
    const [sent, setSent] = useState(false);
    const [values, setValues] = useState<Values>({});
    const messageId = useId();
@@ -97,7 +99,7 @@ export function QuestionCard({ entry }: { entry: QuestionEntry }) {
    const busy = sent && !failed;
    const reply = (response: QuestionResponse) => {
       setSent(true);
-      answer(entry.id, response);
+      answer(sessionId, entry.id, response);
    };
    const submit = (event: FormEvent) => {
       event.preventDefault();

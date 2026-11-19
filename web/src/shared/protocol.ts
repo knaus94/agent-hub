@@ -171,8 +171,8 @@ export type ClientMessage =
    | { type: 'auth'; token: string }
    | { type: 'auth'; code: string }
    | { type: 'logout' }
-   // from: the first entry this browser already holds, kept on a reconnect.
-   | { type: 'open'; sessionId: string | null; from?: number }
+   // The chats on screen, side by side. from: the first entry this browser already holds, kept on a reconnect.
+   | { type: 'view'; panes: { sessionId: string; from?: number }[] }
    | { type: 'older'; sessionId: string; before: number }
    | { type: 'archive'; sessionId: string; archived: boolean }
    | { type: 'quick'; actions: QuickAction[] }

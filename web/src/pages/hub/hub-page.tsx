@@ -1,6 +1,7 @@
 import { LoaderCircle, MessageSquareDashed } from 'lucide-react';
 import { useHub } from '../../entities/hub/hub-store';
 import { t } from '../../shared/i18n';
+import { FileViewer } from '../../features/file-viewer/file-viewer';
 import { useWide } from '../../shared/lib/use-wide';
 import { AppBar } from '../../widgets/app-bar/app-bar';
 import { Chat } from '../../widgets/chat/chat';
@@ -53,6 +54,7 @@ export function HubPage() {
             </aside>
          )}
          <main className="hub-page-main">{main}</main>
+         <FileViewer />
          {!wide && <Drawer />}
       </div>
    );

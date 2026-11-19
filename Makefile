@@ -2,7 +2,7 @@ GO ?= go
 YARN ?= yarn
 PACKAGES = ./cmd/... ./internal/... ./web ./deploy
 
-.PHONY: build web check fmt-check vet web-check install clean
+.PHONY: build web check fmt-check vet test web-check e2e install clean
 
 build: web
 	mkdir -p dist
@@ -17,10 +17,17 @@ fmt-check:
 vet:
 	$(GO) vet $(PACKAGES)
 
+test:
+	$(GO) test ./internal/...
+
 web-check:
 	cd web && $(YARN) check
 
-check: fmt-check vet web-check
+check: fmt-check vet test web-check
+
+# End-to-end tests of the web app against a hub of their own in a scratch home, with a stand-in agent.
+e2e: build
+	cd web && $(YARN) e2e
 
 # The binary carries everything else and installs it; `agent-hub install` alone does the same on another machine.
 install: build

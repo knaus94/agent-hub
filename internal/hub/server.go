@@ -29,6 +29,8 @@ const (
 	writeTimeout  = 10 * time.Second
 	pingInterval  = 30 * time.Second
 	sendQueue     = 256
+	// maxPanes is how many chats one browser may have open side by side.
+	maxPanes = 4
 )
 
 var contentTypes = map[string]string{
@@ -55,7 +57,8 @@ type client struct {
 	address string
 	// guarded by Server.mu
 	authed bool
-	open   string
+	// open are the chats the browser shows, which it is sent the entries of as they change.
+	open []string
 	// device is the token this browser logged in with after a code, which logging out revokes.
 	device string
 	// draft is the chat prepared for this browser's new-chat screen.
@@ -333,6 +336,7 @@ type clientMessage struct {
 	Visible   *bool                   `json:"visible"`
 	Endpoint  *string                 `json:"endpoint"`
 	Path      *string                 `json:"path"`
+	Panes     *[]pane                 `json:"panes"`
 	// Subscription is the browser's PushSubscription as JSON.
 	Subscription *struct {
 		Endpoint string `json:"endpoint"`
@@ -358,6 +362,8 @@ func parseClientMessage(data []byte) (clientMessage, bool) {
 		return m, true
 	case "open":
 		return m, string(shape["sessionId"]) == "null" || m.SessionID != nil
+	case "view":
+		return m, m.Panes != nil && len(*m.Panes) <= maxPanes && !slices.ContainsFunc(*m.Panes, func(p pane) bool { return p.SessionID == "" })
 	case "send":
 		return m, m.SessionID != nil && m.Text != nil
 	case "cancel":
@@ -485,24 +491,15 @@ func (s *Server) handle(c *client, m clientMessage) bool {
 		}
 		return false
 	case "open":
-		c.open = ""
+		// The one chat of a page loaded before chats could be shown side by side.
+		var panes []pane
 		if m.SessionID != nil {
-			c.open, c.draft = *m.SessionID, ""
-			// A browser that reconnects keeps the older entries it has loaded.
-			from := math.MaxInt
-			if m.From != nil {
-				from = *m.From
-			}
-			if start, entries := s.timeline.Tail(c.open, from); entries != nil {
-				c.enqueue(encode(timelineMessage{"timeline", c.open, start, entries}))
-			}
-			if commands := s.timeline.Commands(c.open); commands != nil {
-				c.enqueue(encode(commandsMessage{"commands", c.open, commands}))
-			}
-			if options := s.timeline.Options(c.open); options != nil {
-				c.enqueue(encode(optionsMessage{"options", c.open, options}))
-			}
+			panes, c.draft = []pane{{*m.SessionID, m.From}}, ""
 		}
+		c.open = nil
+		s.view(c, panes)
+	case "view":
+		s.view(c, *m.Panes)
 	case "send":
 		if strings.TrimSpace(*m.Text) != "" {
 			if target := s.timeline.Find(*m.SessionID); target == nil || !target.Online {
@@ -725,7 +722,11 @@ func (s *Server) flush() {
 			c.enqueue(sessions)
 		}
 		// The new-chat screen has no open chat, only its draft.
-		for _, id := range []string{c.open, c.draft} {
+		ids := c.open
+		if c.draft != "" && !slices.Contains(ids, c.draft) {
+			ids = append(slices.Clone(ids), c.draft)
+		}
+		for _, id := range ids {
 			if id != "" && changes.Commands[id] {
 				c.enqueue(encode(commandsMessage{"commands", id, s.timeline.Commands(id)}))
 			}
@@ -733,28 +734,66 @@ func (s *Server) flush() {
 				c.enqueue(encode(optionsMessage{"options", id, s.timeline.Options(id)}))
 			}
 		}
-		if c.open == "" {
-			continue
+		for _, id := range c.open {
+			s.sendChanges(c, id, changes)
 		}
-		if changes.Resets[c.open] {
-			if start, entries := s.timeline.Tail(c.open, math.MaxInt); entries != nil {
-				c.enqueue(encode(timelineMessage{"timeline", c.open, start, entries}))
+	}
+}
+
+func (s *Server) sendChanges(c *client, id string, changes Changes) {
+	if changes.Resets[id] {
+		if start, entries := s.timeline.Tail(id, math.MaxInt); entries != nil {
+			c.enqueue(encode(timelineMessage{"timeline", id, start, entries}))
+		}
+		return
+	}
+	// A replayed history goes out whole once it has come, not as an entry at a time.
+	if s.timeline.Replaying(id) {
+		return
+	}
+	if changed := changes.Patches[id]; changed != nil {
+		list := make([]protocol.Change, 0, len(changed))
+		for index := range changed {
+			if entry := s.timeline.Entry(id, index); entry != nil {
+				list = append(list, protocol.Change{Index: index, Entry: entry})
 			}
+		}
+		slices.SortFunc(list, func(a, b protocol.Change) int { return a.Index - b.Index })
+		c.enqueue(encode(patchMessage{"patch", id, list}))
+	}
+}
+
+// pane is a chat a browser shows. From is the first entry it already holds, after a reconnect; nil asks for the latest
+// page of a chat it was not shown, and nothing for one it is shown already.
+type pane struct {
+	SessionID string `json:"sessionId"`
+	From      *int   `json:"from"`
+}
+
+// view makes the chats a browser is sent those it shows, and sends it what it lacks of each. The caller holds s.mu.
+func (s *Server) view(c *client, panes []pane) {
+	shown := c.open
+	c.open = nil
+	for _, p := range panes {
+		if slices.Contains(c.open, p.SessionID) {
 			continue
 		}
-		// A replayed history goes out whole once it has come, not as an entry at a time.
-		if s.timeline.Replaying(c.open) {
+		c.open = append(c.open, p.SessionID)
+		if p.From == nil && slices.Contains(shown, p.SessionID) {
 			continue
 		}
-		if changed := changes.Patches[c.open]; changed != nil {
-			list := make([]protocol.Change, 0, len(changed))
-			for index := range changed {
-				if entry := s.timeline.Entry(c.open, index); entry != nil {
-					list = append(list, protocol.Change{Index: index, Entry: entry})
-				}
-			}
-			slices.SortFunc(list, func(a, b protocol.Change) int { return a.Index - b.Index })
-			c.enqueue(encode(patchMessage{"patch", c.open, list}))
+		from := math.MaxInt
+		if p.From != nil {
+			from = *p.From
+		}
+		if start, entries := s.timeline.Tail(p.SessionID, from); entries != nil {
+			c.enqueue(encode(timelineMessage{"timeline", p.SessionID, start, entries}))
+		}
+		if commands := s.timeline.Commands(p.SessionID); commands != nil {
+			c.enqueue(encode(commandsMessage{"commands", p.SessionID, commands}))
+		}
+		if options := s.timeline.Options(p.SessionID); options != nil {
+			c.enqueue(encode(optionsMessage{"options", p.SessionID, options}))
 		}
 	}
 }

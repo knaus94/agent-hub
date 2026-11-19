@@ -10,11 +10,11 @@ import './transfer-sheet.css';
 export function TransferSheet({ session }: { session: SessionSummary }) {
    const transfer = useHub((state) => state.transfer);
    const agents = useHub((state) => state.agents);
-   const failure = useHub((state) => state.failure);
+   const failure = useHub((state) => state.failures[session.id]);
    const close = useHub((state) => state.closeTransfer);
    const start = useHub((state) => state.startTransfer);
    const current = transfer?.sessionId === session.id ? transfer : null;
-   const failed = failure?.sessionId === session.id && failure.reason.startsWith('transfer') ? failure.reason : null;
+   const failed = failure?.reason.startsWith('transfer') ? failure.reason : null;
 
    return (
       <Sheet open={current !== null} title={t('transfer.title')} onClose={close}>

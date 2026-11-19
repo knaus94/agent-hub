@@ -30,7 +30,7 @@ function pick(chosen: string | null, key: string, offered: string[]) {
 export function NewChatPage() {
    const agents = useHub((state) => state.agents);
    const projects = useHub((state) => state.projects);
-   const failure = useHub((state) => state.failure);
+   const failure = useHub((state) => state.failures['']);
    const connected = useHub((state) => state.connection === 'open');
    const draft = useHub((state) => state.draft);
    const draftOptions = useHub((state) => state.draftOptions);

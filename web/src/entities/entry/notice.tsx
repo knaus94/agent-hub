@@ -1,7 +1,8 @@
 import { ArrowRightLeft } from 'lucide-react';
-import { memo } from 'react';
+import { memo, useContext } from 'react';
 import type { Entry } from '../../shared/protocol.ts';
 import { useHub } from '../hub/hub-store';
+import { ChatSessionId } from '../session/chat-session';
 import { locale, t } from '../../shared/i18n';
 import './notice.css';
 
@@ -27,12 +28,12 @@ function resetsAt(value: string) {
 
 // A failed turn, an account out of its limits above all, offers to go on with another agent.
 export const Notice = memo(function Notice({ entry }: { entry: NoticeEntry }) {
-   const openId = useHub((state) => state.openId);
+   const sessionId = useContext(ChatSessionId);
    const openTransfer = useHub((state) => state.openTransfer);
    const tone = TONES[entry.code];
    const detail =
       entry.code === 'rate-limited' && entry.detail ? t('notice.rate-limited.until', { when: resetsAt(entry.detail) }) : entry.detail;
-   const movable = (entry.code === 'turn-failed' || entry.code === 'rate-limited') && openId !== null;
+   const movable = (entry.code === 'turn-failed' || entry.code === 'rate-limited') && sessionId !== '';
    return (
       <div className="notice" data-tone={tone} role={tone === 'error' ? 'alert' : undefined}>
          <p className="notice-line">
@@ -40,7 +41,7 @@ export const Notice = memo(function Notice({ entry }: { entry: NoticeEntry }) {
             {detail && <span className="notice-detail">{detail}</span>}
          </p>
          {movable && (
-            <button className="notice-action" type="button" onClick={() => openTransfer(openId)}>
+            <button className="notice-action" type="button" onClick={() => openTransfer(sessionId)}>
                <ArrowRightLeft className="notice-action-icon" aria-hidden="true" />
                {t('notice.transfer')}
             </button>

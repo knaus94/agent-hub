@@ -19,6 +19,15 @@ import type {
 type Connection = 'connecting' | 'open' | 'lost';
 type Failure = Extract<ServerMessage, { type: 'failed' }>;
 
+// A chat open in a pane, or null for the new-chat screen, of which there is at most one.
+export type Pane = string | null;
+
+// A chat as this browser holds it: its entries from index start on, as a long chat is loaded a page at a time from the
+// end, and its slash commands and settings. A chat comes to hold them while it is shown.
+export type ChatData = { entries: Entry[] | null; start: number; commands: Command[]; options: ConfigOption[] };
+
+export const MAX_PANES = 4;
+
 type HubState = {
    token: string | null;
    // A code from the authenticator app waiting for the socket to open.
@@ -28,21 +37,22 @@ type HubState = {
    sessions: SessionSummary[];
    agents: AgentOption[];
    projects: ProjectOption[];
+   // The panes from left to right and the one in use, whose chat the address names as openId. shown is how many fit on
+   // the screen: those around the one in use are shown, the rest wait for room.
+   panes: Pane[];
+   focused: number;
+   shown: number;
    openId: string | null;
+   chats: Record<string, ChatData>;
    drawerOpen: boolean;
    // The chat started from here last; it shows as starting until the hub lists it.
    startedId: string | null;
-   // The open chat's entries from index entriesStart on: a long chat is loaded a page at a time, from the end.
-   entries: Entry[] | null;
-   entriesStart: number;
-   // The slash commands and settings of the open chat.
-   commands: Command[];
-   options: ConfigOption[];
    // The chat the hub prepared for the new-chat screen, as Zed opens a session for a new thread, and what it offers.
    draft: { agentId: string; cwd: string; sessionId: string | null } | null;
    draftCommands: Command[];
    draftOptions: ConfigOption[];
-   failure: Failure | null;
+   // What went wrong in each chat, by its id; a new chat that did not start is under "".
+   failures: Record<string, Failure>;
    quick: QuickAction[];
    // Whether the hub recognises speech, so the composer offers voice input.
    voice: boolean;
@@ -51,20 +61,20 @@ type HubState = {
    limits: LimitAccount[];
    // A chat being moved to another agent: where it can go, once the hub says, and whether the move is under way.
    transfer: { sessionId: string; targets: TransferTarget[] | null; busy: boolean } | null;
-   // A Markdown file of the open chat's project being read: its text or why not, once the hub answers.
+   // A Markdown file of a chat's project being read: its text or why not, once the hub answers.
    file: { sessionId: string; path: string; text: string | null; error: FileError | null } | null;
    enter: (code: string) => void;
    logout: () => void;
-   send: (text: string) => void;
-   cancel: () => void;
+   send: (sessionId: string, text: string) => void;
+   cancel: (sessionId: string) => void;
    prepare: (agentId: string, cwd: string) => void;
    sendDraft: (text: string) => void;
-   answer: (entryId: string, response: QuestionResponse) => void;
+   answer: (sessionId: string, entryId: string, response: QuestionResponse) => void;
    configure: (sessionId: string, configId: string, value: string | boolean) => void;
    openDrawer: () => void;
    closeDrawer: () => void;
-   dismissFailure: () => void;
-   loadOlder: () => void;
+   dismissFailure: (sessionId: string) => void;
+   loadOlder: (sessionId: string) => void;
    archive: (sessionId: string, archived: boolean) => void;
    saveQuick: (actions: QuickAction[]) => void;
    pushSubscribe: (subscription: PushSubscriptionJSON) => void;
@@ -74,9 +84,15 @@ type HubState = {
    openFile: (sessionId: string, path: string) => void;
    closeFile: () => void;
    pushUnsubscribe: (endpoint: string) => void;
+   focusPane: (index: number) => void;
+   // Opens a chat in a new pane at index, or puts the pane it is in to use.
+   openBeside: (chat: Pane, index: number) => void;
+   closePane: (index: number) => void;
+   setShown: (shown: number) => void;
 };
 
 const TOKEN_KEY = 'agent-hub.token';
+const PANES_KEY = 'agent-hub.panes';
 const RETRY_MIN = 1000;
 const RETRY_MAX = 10_000;
 const LIMITS_EVERY = 5 * 60_000;
@@ -85,6 +101,41 @@ const LIMITS_EVERY = 5 * 60_000;
 function readOpenId() {
    const match = /^#\/s\/(.+)$/.exec(location.hash);
    return match ? decodeURIComponent(match[1]) : null;
+}
+
+function hashOf(chat: Pane) {
+   return chat === null ? '#/' : `#/s/${encodeURIComponent(chat)}`;
+}
+
+// The panes kept from the last visit, with the chat the address names in use: in its pane if it has one, in place of
+// the chat that was in use if not.
+function readPanes(openId: Pane) {
+   let panes: Pane[] = [null];
+   let focused = 0;
+   try {
+      const kept: unknown = JSON.parse(localStorage.getItem(PANES_KEY) ?? 'null');
+      if (kept && typeof kept === 'object' && 'panes' in kept && 'focused' in kept && Array.isArray(kept.panes)) {
+         const list = kept.panes.filter((pane): pane is Pane => pane === null || typeof pane === 'string').slice(0, MAX_PANES);
+         if (list.length > 0 && new Set(list).size === list.length) {
+            panes = list;
+            focused = typeof kept.focused === 'number' ? Math.min(Math.max(kept.focused, 0), list.length - 1) : 0;
+         }
+      }
+   } catch {
+      // A broken record starts over with one pane.
+   }
+   const at = panes.indexOf(openId);
+   if (at >= 0) return { panes, focused: at };
+   panes = panes.slice();
+   panes[focused] = openId;
+   return { panes, focused };
+}
+
+// shownPanes are the indexes of the panes on screen: as many as fit, the one in use among them.
+export function shownPanes(count: number, focused: number, shown: number) {
+   const size = Math.min(count, Math.max(shown, 1));
+   const first = Math.min(Math.max(focused - size + 1, 0), count - size);
+   return Array.from({ length: size }, (_, index) => first + index);
 }
 
 // A link printed by the hub carries the token once; keep it and drop it from the address bar.
@@ -97,12 +148,16 @@ function takeTokenFromUrl() {
 
 const initialToken = takeTokenFromUrl() ?? localStorage.getItem(TOKEN_KEY);
 if (initialToken) localStorage.setItem(TOKEN_KEY, initialToken);
+const initialOpenId = readOpenId();
+const initialPanes = readPanes(initialOpenId);
 
 let socket: WebSocket | null = null;
 let retry = RETRY_MIN;
 let retryTimer: ReturnType<typeof setTimeout> | undefined;
-// An older page asked for and not yet come; a lost reply is forgotten with its socket or chat.
-let olderPending = false;
+// The chats the hub was last told are shown; only their entries are taken.
+let viewed: string[] = [];
+// Chats whose older page was asked for and has not come; a lost reply is forgotten with its socket or pane.
+const olderPending = new Set<string>();
 export type VoiceEvent = { text?: string; end?: boolean; error?: string };
 let ticketWaiter: { resolve: (ticket: string) => void; reject: (error: Error) => void } | null = null;
 const voiceListeners = new Map<string, (event: VoiceEvent) => void>();
@@ -134,6 +189,18 @@ function post(message: ClientMessage) {
    return true;
 }
 
+function without<T>(record: Record<string, T>, key: string) {
+   if (!(key in record)) return record;
+   const rest = { ...record };
+   delete rest[key];
+   return rest;
+}
+
+// Changing the chat in use writes the address without a step back for every pane clicked.
+function writeHash(chat: Pane) {
+   if (hashOf(chat) !== (location.hash || '#/')) history.replaceState(null, '', hashOf(chat));
+}
+
 export const useHub = create<HubState>()((set, get) => ({
    token: initialToken,
    code: null,
@@ -142,17 +209,17 @@ export const useHub = create<HubState>()((set, get) => ({
    sessions: [],
    agents: [],
    projects: [],
-   openId: readOpenId(),
+   panes: initialPanes.panes,
+   focused: initialPanes.focused,
+   shown: 1,
+   openId: initialOpenId,
+   chats: {},
    drawerOpen: false,
    startedId: null,
-   entries: null,
-   entriesStart: 0,
-   commands: [],
-   options: [],
    draft: null,
    draftCommands: [],
    draftOptions: [],
-   failure: null,
+   failures: {},
    quick: [],
    limits: [],
    voice: false,
@@ -167,54 +234,61 @@ export const useHub = create<HubState>()((set, get) => ({
       // The hub forgets this device first, so the token is useless even if it was copied.
       post({ type: 'logout' });
       localStorage.removeItem(TOKEN_KEY);
-      set({ token: null, sessions: [], entries: null, limits: [], file: null });
+      set({ token: null, sessions: [], chats: {}, limits: [], file: null });
       socket?.close();
    },
-   send: (text) => {
-      const sessionId = get().openId;
-      if (sessionId) post({ type: 'send', sessionId, text });
+   send: (sessionId, text) => {
+      post({ type: 'send', sessionId, text });
    },
-   cancel: () => {
-      const sessionId = get().openId;
-      if (sessionId) post({ type: 'cancel', sessionId });
+   cancel: (sessionId) => {
+      post({ type: 'cancel', sessionId });
    },
    prepare: (agentId, cwd) => {
       const draft = get().draft;
       if (draft?.agentId !== agentId || draft.cwd !== cwd)
          set({ draft: { agentId, cwd, sessionId: null }, draftCommands: [], draftOptions: [] });
-      if (get().failure?.reason === 'start-failed') set({ failure: null });
+      if (get().failures['']?.reason === 'start-failed') set({ failures: without(get().failures, '') });
       post({ type: 'prepare', agentId, cwd });
    },
    sendDraft: (text) => {
       const sessionId = get().draft?.sessionId;
       if (!sessionId) return;
       post({ type: 'send', sessionId, text });
-      set({ startedId: sessionId, draft: null, draftCommands: [], draftOptions: [] });
-      location.hash = `#/s/${encodeURIComponent(sessionId)}`;
+      // The new chat takes the place of the new-chat screen it was started from.
+      const { panes } = get();
+      const at = Math.max(panes.indexOf(null), 0);
+      set({
+         startedId: sessionId,
+         draft: null,
+         draftCommands: [],
+         draftOptions: [],
+         panes: panes.with(at, sessionId),
+         focused: at,
+         openId: sessionId,
+      });
+      location.hash = hashOf(sessionId);
    },
-   answer: (entryId, response) => {
-      const sessionId = get().openId;
-      if (!sessionId) return;
-      set({ failure: null });
+   answer: (sessionId, entryId, response) => {
+      set({ failures: without(get().failures, sessionId) });
       post({ type: 'answer', sessionId, entryId, response });
    },
    configure: (sessionId, configId, value) => {
-      set({ failure: null });
+      set({ failures: without(get().failures, sessionId) });
       post({ type: 'configure', sessionId, configId, value });
    },
    openDrawer: () => set({ drawerOpen: true }),
    closeDrawer: () => set({ drawerOpen: false }),
-   dismissFailure: () => set({ failure: null }),
+   dismissFailure: (sessionId) => set({ failures: without(get().failures, sessionId) }),
    pushSubscribe: (subscription) => post({ type: 'push-subscribe', subscription }),
    openTransfer: (sessionId) => {
-      set({ transfer: { sessionId, targets: null, busy: false }, failure: null });
+      set({ transfer: { sessionId, targets: null, busy: false }, failures: without(get().failures, sessionId) });
       post({ type: 'transfer-options', sessionId });
    },
    closeTransfer: () => set({ transfer: null }),
    startTransfer: (agentId) => {
       const transfer = get().transfer;
       if (!transfer || transfer.busy) return;
-      set({ transfer: { ...transfer, busy: true }, failure: null });
+      set({ transfer: { ...transfer, busy: true }, failures: without(get().failures, transfer.sessionId) });
       post({ type: 'transfer', sessionId: transfer.sessionId, agentId });
    },
    // A file asked for while the socket is down is asked for again once it is back.
@@ -230,16 +304,83 @@ export const useHub = create<HubState>()((set, get) => ({
    },
    archive: (sessionId, archived) => {
       post({ type: 'archive', sessionId, archived });
-      // An archived chat is put away: the screen goes on to a new chat.
-      if (archived && get().openId === sessionId) location.hash = '#/';
+      // An archived chat is put away: its pane closes, or goes on to a new chat when it is the only one.
+      const at = get().panes.indexOf(sessionId);
+      if (!archived || at < 0) return;
+      if (get().panes.length > 1) get().closePane(at);
+      else location.hash = '#/';
    },
-   loadOlder: () => {
-      const { openId, entries, entriesStart } = get();
-      if (!openId || !entries || entriesStart === 0 || olderPending) return;
-      olderPending = true;
-      post({ type: 'older', sessionId: openId, before: entriesStart });
+   loadOlder: (sessionId) => {
+      const chat = get().chats[sessionId];
+      if (!chat?.entries || chat.start === 0 || olderPending.has(sessionId)) return;
+      olderPending.add(sessionId);
+      post({ type: 'older', sessionId, before: chat.start });
+   },
+   focusPane: (index) => {
+      const { panes, focused } = get();
+      if (index === focused || index < 0 || index >= panes.length) return;
+      set({ focused: index, openId: panes[index], drawerOpen: false });
+      writeHash(panes[index]);
+   },
+   openBeside: (chat, index) => {
+      const { panes } = get();
+      const at = panes.indexOf(chat);
+      if (at >= 0) return get().focusPane(at);
+      if (panes.length >= MAX_PANES) return;
+      const place = Math.min(Math.max(index, 0), panes.length);
+      set({ panes: panes.toSpliced(place, 0, chat), focused: place, openId: chat, drawerOpen: false });
+      writeHash(chat);
+   },
+   closePane: (index) => {
+      const { panes, focused } = get();
+      if (panes.length < 2 || index < 0 || index >= panes.length) return;
+      const next = panes.toSpliced(index, 1);
+      const nextFocused = index < focused || focused === next.length ? focused - 1 : focused;
+      set({ panes: next, focused: nextFocused, openId: next[nextFocused] });
+      writeHash(next[nextFocused]);
+   },
+   setShown: (shown) => {
+      if (shown !== get().shown) set({ shown });
    },
 }));
+
+// syncView tells the hub which chats are on screen, so it sends their entries as they change and spares notifications
+// of them. Chats leaving the screen are forgotten here and sent whole when they come back; after a reconnect each chat
+// asks only for what it lacks.
+function syncView(reconnect: boolean) {
+   const { panes, focused, shown, chats, connection } = useHub.getState();
+   if (connection !== 'open') return;
+   const ids = shownPanes(panes.length, focused, shown)
+      .map((index) => panes[index])
+      .filter((pane): pane is string => pane !== null);
+   if (!reconnect && ids.length === viewed.length && ids.every((id, index) => id === viewed[index])) return;
+   const sent = post({
+      type: 'view',
+      panes: ids.map((sessionId) => {
+         const held = chats[sessionId]?.entries;
+         return reconnect && held ? { sessionId, from: chats[sessionId].start } : { sessionId };
+      }),
+   });
+   if (!sent) return;
+   viewed = ids;
+   for (const id of olderPending) if (!ids.includes(id)) olderPending.delete(id);
+   const kept = Object.fromEntries(Object.entries(chats).filter(([id]) => ids.includes(id)));
+   if (Object.keys(kept).length !== Object.keys(chats).length) useHub.setState({ chats: kept });
+}
+
+useHub.subscribe((state, previous) => {
+   if (state.panes !== previous.panes || state.focused !== previous.focused || state.shown !== previous.shown) {
+      localStorage.setItem(PANES_KEY, JSON.stringify({ panes: state.panes, focused: state.focused }));
+      syncView(false);
+   }
+});
+
+function updateChat(sessionId: string, change: (chat: ChatData) => Partial<ChatData>) {
+   if (!viewed.includes(sessionId)) return;
+   const chats = useHub.getState().chats;
+   const chat = chats[sessionId] ?? { entries: null, start: 0, commands: [], options: [] };
+   useHub.setState({ chats: { ...chats, [sessionId]: { ...chat, ...change(chat) } } });
+}
 
 function receive(message: ServerMessage) {
    const state = useHub.getState();
@@ -259,7 +400,7 @@ function receive(message: ServerMessage) {
             post({ type: 'quick', actions: quickUnsent });
             quickUnsent = null;
          } else useHub.setState({ quick: message.quick });
-         post({ type: 'open', sessionId: state.openId, ...(state.entries ? { from: state.entriesStart } : {}) });
+         syncView(true);
          post({ type: 'limits' });
          if (state.file && state.file.text === null && state.file.error === null)
             post({ type: 'file', sessionId: state.file.sessionId, path: state.file.path });
@@ -295,31 +436,33 @@ function receive(message: ServerMessage) {
          } else voiceListeners.get(message.ticket)?.({ end: true, error: message.error });
          return;
       case 'timeline':
-         if (message.sessionId !== state.openId) return;
-         olderPending = false;
-         useHub.setState({ entries: message.entries, entriesStart: message.start });
+         olderPending.delete(message.sessionId);
+         updateChat(message.sessionId, () => ({ entries: message.entries, start: message.start }));
          return;
       case 'older':
-         if (message.sessionId !== state.openId) return;
-         olderPending = false;
+         olderPending.delete(message.sessionId);
          // A page that no longer joins the entries held, after the chat was reloaded meanwhile, is dropped.
-         if (state.entries && message.start + message.entries.length === state.entriesStart)
-            useHub.setState({ entries: [...message.entries, ...state.entries], entriesStart: message.start });
+         updateChat(message.sessionId, (chat) =>
+            chat.entries && message.start + message.entries.length === chat.start
+               ? { entries: [...message.entries, ...chat.entries], start: message.start }
+               : {},
+         );
          return;
-      case 'patch': {
-         if (message.sessionId !== state.openId || !state.entries) return;
-         const entries = state.entries.slice();
-         // Changes to entries not loaded yet come with them when they are.
-         for (const { index, entry } of message.changes) if (index >= state.entriesStart) entries[index - state.entriesStart] = entry;
-         useHub.setState({ entries });
+      case 'patch':
+         updateChat(message.sessionId, (chat) => {
+            if (!chat.entries) return {};
+            const entries = chat.entries.slice();
+            // Changes to entries not loaded yet come with them when they are.
+            for (const { index, entry } of message.changes) if (index >= chat.start) entries[index - chat.start] = entry;
+            return { entries };
+         });
          return;
-      }
       case 'commands':
-         if (message.sessionId === state.openId) useHub.setState({ commands: message.commands });
+         updateChat(message.sessionId, () => ({ commands: message.commands }));
          if (message.sessionId === state.draft?.sessionId) useHub.setState({ draftCommands: message.commands });
          return;
       case 'options':
-         if (message.sessionId === state.openId) useHub.setState({ options: message.options });
+         updateChat(message.sessionId, () => ({ options: message.options }));
          if (message.sessionId === state.draft?.sessionId) useHub.setState({ draftOptions: message.options });
          return;
       case 'prepared': {
@@ -330,7 +473,7 @@ function receive(message: ServerMessage) {
          return;
       }
       case 'failed':
-         useHub.setState({ failure: message });
+         useHub.setState({ failures: { ...state.failures, [message.sessionId]: message } });
          if (state.transfer?.sessionId === message.sessionId) useHub.setState({ transfer: { ...state.transfer, busy: false } });
          return;
       case 'transfer-options':
@@ -340,13 +483,16 @@ function receive(message: ServerMessage) {
          if (state.file?.sessionId === message.sessionId && state.file.path === message.path)
             useHub.setState({ file: { ...state.file, text: message.text, error: message.error } });
          return;
-      case 'transferred':
-         // The move ends in the new chat.
-         if (state.transfer?.sessionId === message.from) {
-            useHub.setState({ transfer: null });
-            location.hash = `#/s/${encodeURIComponent(message.sessionId)}`;
-         }
+      case 'transferred': {
+         // The move ends in the new chat, in the pane of the chat it was moved from.
+         if (state.transfer?.sessionId !== message.from) return;
+         const at = state.panes.indexOf(message.from);
+         if (at >= 0 && !state.panes.includes(message.sessionId))
+            useHub.setState({ transfer: null, panes: state.panes.with(at, message.sessionId), focused: at, openId: message.sessionId });
+         else useHub.setState({ transfer: null });
+         location.hash = hashOf(message.sessionId);
          return;
+      }
    }
 }
 
@@ -360,7 +506,8 @@ function connect() {
    next.onmessage = (event) => receive(JSON.parse(String(event.data)) as ServerMessage);
    next.onclose = () => {
       socket = null;
-      olderPending = false;
+      viewed = [];
+      olderPending.clear();
       // The text of a recording goes to the socket that asked for it; with that socket gone it will not come.
       ticketWaiter?.reject(new Error('connection lost'));
       ticketWaiter = null;
@@ -387,16 +534,28 @@ function askLimits() {
 document.addEventListener('visibilitychange', askLimits);
 setInterval(askLimits, LIMITS_EVERY);
 
+// The address names the chat in use: a chat already in a pane puts that pane to use, any other replaces the chat in
+// the pane in use.
 window.addEventListener('hashchange', () => {
    const openId = readOpenId();
-   if (openId === useHub.getState().openId) {
+   const { panes, focused, failures } = useHub.getState();
+   const at = panes.indexOf(openId);
+   if (at === focused) {
       useHub.setState({ drawerOpen: false });
       return;
    }
-   olderPending = false;
-   useHub.setState({ openId, drawerOpen: false, entries: null, entriesStart: 0, commands: [], options: [], failure: null, file: null });
-   // Asked only now: a reply that came before openId changed would be taken for the previous chat.
-   post({ type: 'open', sessionId: openId });
+   if (at >= 0) {
+      useHub.setState({ focused: at, openId, drawerOpen: false });
+      return;
+   }
+   const replaced = panes[focused];
+   useHub.setState({
+      panes: panes.with(focused, openId),
+      openId,
+      drawerOpen: false,
+      file: null,
+      failures: replaced === null ? failures : without(failures, replaced),
+   });
 });
 
 connect();
