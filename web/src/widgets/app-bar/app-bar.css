@@ -8,13 +8,14 @@
    background: var(--color-bg);
 }
 
-/* With an action the end holds two buttons; the start grows as much, so the title stays centred. */
-.app-bar[data-action='true'] {
+/* With two buttons on either side, both sides grow as much, so the title stays centred. */
+.app-bar[data-double='true'] {
    grid-template-columns: calc(2 * var(--size-touch) + var(--space-1)) minmax(0, 1fr) calc(2 * var(--size-touch) + var(--space-1));
 }
 
-.app-bar-slot {
-   width: var(--size-touch);
+.app-bar-start {
+   display: flex;
+   gap: var(--space-1);
 }
 
 .app-bar-end {

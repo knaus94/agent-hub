@@ -7,7 +7,6 @@ import { Composer } from '../../features/composer/composer';
 import { ChatSettings } from '../../features/chat-settings/chat-settings';
 import { QuickBar } from '../../features/quick-actions/quick-bar';
 import { QuickManager } from '../../features/quick-actions/quick-manager';
-import { TransferSheet } from '../../features/transfer/transfer-sheet';
 import { VoiceInput } from '../../features/voice-input/voice-input';
 import { t } from '../../shared/i18n';
 import { MarkdownFiles } from '../../shared/ui/markdown';
@@ -73,7 +72,6 @@ export function Chat({ session }: { session: SessionSummary }) {
    return (
       <section className="chat">
          <ChatHeader session={session} />
-         <TransferSheet session={session} />
          <ChatSessionId.Provider value={session.id}>
             <MarkdownFiles.Provider value={files}>
                <Timeline

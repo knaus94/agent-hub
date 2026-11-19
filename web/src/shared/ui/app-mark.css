@@ -1,0 +1,33 @@
+.app-mark {
+   flex: none;
+   width: var(--app-mark-size, var(--space-6));
+   height: var(--app-mark-size, var(--space-6));
+}
+
+.app-mark-dot {
+   fill: var(--color-accent);
+}
+
+.app-mark-ring {
+   fill: none;
+   stroke: var(--color-accent-line);
+   stroke-width: 2;
+   transform-origin: center;
+}
+
+.app-mark-ring[data-busy='true'] {
+   animation: app-mark-breathe 2s var(--ease-out) infinite;
+}
+
+@keyframes app-mark-breathe {
+   50% {
+      stroke: var(--color-accent);
+      transform: scale(1.12);
+   }
+}
+
+@media (prefers-reduced-motion: reduce) {
+   .app-mark-ring[data-busy='true'] {
+      animation: none;
+   }
+}

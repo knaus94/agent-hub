@@ -1,11 +1,14 @@
 import { useEffect, useRef } from 'react';
 import { useHub } from '../../entities/hub/hub-store';
 import { t } from '../../shared/i18n';
+import { useWide } from '../../shared/lib/use-wide';
 import { SessionList } from '../session-list/session-list';
 import './drawer.css';
 
-// The chat list on a phone, slid in from the side over the current chat.
+// The chat list on a phone, or put away on a wide screen, slid in from the side over the chats. On a wide screen it
+// can be pinned beside them again.
 export function Drawer() {
+   const wide = useWide();
    const open = useHub((state) => state.drawerOpen);
    const close = useHub((state) => state.closeDrawer);
    const dialog = useRef<HTMLDialogElement>(null);
@@ -29,7 +32,7 @@ export function Drawer() {
          onClick={(event) => event.target === dialog.current && close()}
       >
          <div ref={panel} className="drawer-panel" tabIndex={-1}>
-            <SessionList />
+            <SessionList dock={wide ? 'pin' : undefined} />
          </div>
       </dialog>
    );

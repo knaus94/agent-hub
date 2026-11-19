@@ -82,7 +82,6 @@
    --shadow-sheet: 0 -12px 40px #00000080;
    --color-scrim: #0d0d0c99;
    --shadow-accent: 0 6px 20px #d9775740;
-   --shadow-logo: 0 0 0 4px var(--color-accent-soft);
    --shadow-ring: inset 0 0 0 1px var(--color-border-strong);
 
    --size-touch: 40px;

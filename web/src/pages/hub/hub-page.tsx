@@ -2,6 +2,7 @@ import { LoaderCircle, MessageSquareDashed } from 'lucide-react';
 import { useHub, type Pane } from '../../entities/hub/hub-store';
 import { t } from '../../shared/i18n';
 import { FileViewer } from '../../features/file-viewer/file-viewer';
+import { TransferSheet } from '../../features/transfer/transfer-sheet';
 import { useWide } from '../../shared/lib/use-wide';
 import { AppBar } from '../../widgets/app-bar/app-bar';
 import { Chat } from '../../widgets/chat/chat';
@@ -32,6 +33,8 @@ export function HubPage() {
    const startedId = useHub((state) => state.startedId);
    const sessions = useHub((state) => state.sessions);
    const connection = useHub((state) => state.connection);
+   const listHidden = useHub((state) => state.listHidden);
+   const list = wide && !listHidden;
    const pane = (chat: Pane) => {
       const open = sessions.find((session) => session.id === chat);
       if (open) return <Chat session={open} />;
@@ -40,22 +43,23 @@ export function HubPage() {
    };
 
    return (
-      <div className="hub-page" data-layout={wide ? 'split' : 'single'}>
+      <div className="hub-page" data-layout={list ? 'split' : 'single'}>
          {connection !== 'open' && (
             <p className="hub-page-banner" role="status">
                {t(connection === 'connecting' ? 'connection.connecting' : 'connection.lost')}
             </p>
          )}
-         {wide && (
+         {list && (
             <aside className="hub-page-sidebar">
-               <SessionList />
+               <SessionList dock="hide" />
             </aside>
          )}
          <main className="hub-page-main">
             <Panes render={pane} />
          </main>
          <FileViewer />
-         {!wide && <Drawer />}
+         <TransferSheet />
+         {!list && <Drawer />}
       </div>
    );
 }

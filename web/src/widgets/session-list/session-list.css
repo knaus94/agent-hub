@@ -17,6 +17,7 @@
 .session-list-brand {
    display: flex;
    flex: 1;
+   min-width: 0;
    align-items: center;
    gap: var(--space-3);
    font-size: var(--text-lg);
@@ -24,35 +25,36 @@
    letter-spacing: -0.01em;
 }
 
-.session-list-logo {
-   width: var(--space-4);
-   height: var(--space-4);
-   border-radius: var(--radius-pill);
-   background: var(--color-accent);
-   box-shadow: var(--shadow-logo);
-}
-
-.session-list-logo[data-running='true'] {
-   animation: session-list-glow 2s var(--ease-out) infinite;
+/* The count of chats at work sits under the name, so the name keeps to one line beside the buttons. */
+.session-list-name {
+   display: grid;
+   min-width: 0;
+   line-height: var(--leading-tight);
+   white-space: nowrap;
 }
 
 .session-list-running {
-   padding: var(--space-half) var(--space-2);
-   border-radius: var(--radius-pill);
-   background: var(--color-accent-soft);
    color: var(--color-accent);
    font-size: var(--text-2xs);
    font-weight: 600;
+   letter-spacing: 0;
    font-variant-numeric: tabular-nums;
-   animation: session-list-pop var(--motion-base) var(--ease-spring);
+   animation: session-list-pop var(--motion-base) var(--ease-out);
+}
+
+.session-list-top {
+   display: flex;
+   gap: var(--space-1);
+   margin: 0 var(--space-3) var(--space-2);
 }
 
 .session-list-new {
    display: flex;
+   flex: 1;
    align-items: center;
    gap: var(--space-3);
+   min-width: 0;
    min-height: var(--size-touch);
-   margin: 0 var(--space-3) var(--space-2);
    padding: var(--space-2) var(--space-3);
    border-radius: var(--radius-lg);
    color: var(--color-text);
@@ -101,6 +103,31 @@
    }
 }
 
+.session-list-dock {
+   display: grid;
+   flex: none;
+   place-items: center;
+   width: var(--size-touch);
+   height: var(--size-touch);
+   padding: 0;
+   border: 0;
+   border-radius: var(--radius-md);
+   background: transparent;
+   color: var(--color-text-faint);
+   cursor: pointer;
+   transition:
+      background var(--motion-fast) var(--ease-out),
+      color var(--motion-fast) var(--ease-out);
+}
+
+@media (hover: hover) {
+   .session-list-dock:hover {
+      background: var(--color-surface-hover);
+      color: var(--color-text);
+   }
+}
+
+.session-list-dock-icon,
 .session-list-logout-icon {
    width: var(--size-icon);
    height: var(--size-icon);
@@ -150,6 +177,34 @@
 
 .session-list-row-actions {
    display: flex;
+}
+
+.session-list-row-more {
+   display: none;
+}
+
+/* A touch screen has no hover to reveal the buttons; one opens the chat's menu instead, so the row keeps its room. */
+@media (hover: none) {
+   .session-list-row-actions {
+      display: none;
+   }
+
+   .session-list-row-more {
+      display: grid;
+      place-items: center;
+      width: var(--size-touch);
+      height: var(--size-touch);
+      padding: 0;
+      border: 0;
+      border-radius: var(--radius-md);
+      background: transparent;
+      color: var(--color-text-faint);
+      cursor: pointer;
+   }
+
+   .session-list-row-more:active {
+      background: var(--color-surface-hover);
+   }
 }
 
 .session-list-row-action {
@@ -284,21 +339,15 @@
    font-size: var(--text-sm);
 }
 
-@keyframes session-list-glow {
-   50% {
-      box-shadow: 0 0 0 var(--space-2) var(--color-accent-soft);
-   }
-}
-
 @keyframes session-list-pop {
    from {
       opacity: 0;
-      transform: scale(0.8);
    }
 }
 
 @media (prefers-reduced-motion: reduce) {
    .session-list-logout,
+   .session-list-dock,
    .session-list-new,
    .session-list-archive-toggle,
    .session-list-archive-chevron,
@@ -307,7 +356,6 @@
       transition: none;
    }
 
-   .session-list-logo[data-running='true'],
    .session-list-running {
       animation: none;
    }

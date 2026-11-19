@@ -2,6 +2,7 @@ import { useId, useState } from 'react';
 import { useHub } from '../../entities/hub/hub-store';
 import { t, type MessageKey } from '../../shared/i18n';
 import type { DeniedReason } from '../../shared/protocol.ts';
+import { AppMark } from '../../shared/ui/app-mark';
 import './login-page.css';
 
 const CODE = /^\d{6}$/;
@@ -36,7 +37,7 @@ export function LoginPage() {
                setValue('');
             }}
          >
-            <span className="login-logo" aria-hidden="true" />
+            <AppMark className="login-logo" />
             <h1 className="login-title">{t('login.title')}</h1>
             <p className="login-hint" id={hintId}>
                {t('login.hint')}

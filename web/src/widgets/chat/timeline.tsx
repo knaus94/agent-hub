@@ -76,6 +76,9 @@ export function Timeline({
    const initialEnd = useRef<number | null>(null);
    const shownStart = useRef(start);
    const before = useRef<{ height: number; top: number } | null>(null);
+   // The latest message of the user's seen so far; null before the entries come.
+   const userSeen = useRef<string | null>(null);
+   const lastUser = entries?.findLast((entry) => entry.kind === 'user')?.id ?? '';
    const [showLatest, setShowLatest] = useState(false);
    const running = session.online && session.status === 'running';
 
@@ -90,6 +93,9 @@ export function Timeline({
       if (before.current && !stuck.current) element.scrollTop = before.current.top + element.scrollHeight - before.current.height;
       before.current = null;
       shownStart.current = start;
+      // A message sent, from here or from Zed, brings the view down to follow its answer.
+      if (entries && userSeen.current !== null && lastUser !== userSeen.current) follow(true);
+      if (entries) userSeen.current = lastUser;
       if (stuck.current) element.scrollTop = element.scrollHeight;
       lastTop.current = element.scrollTop;
       // Older entries are asked for a screen before the top is reached, and again while they do not fill the screen.

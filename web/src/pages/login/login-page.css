@@ -17,12 +17,8 @@
 }
 
 .login-logo {
-   width: var(--space-6);
-   height: var(--space-6);
+   --app-mark-size: var(--space-10);
    margin-block-end: var(--space-2);
-   border-radius: var(--radius-pill);
-   background: var(--color-accent);
-   box-shadow: var(--shadow-logo);
 }
 
 .login-title {

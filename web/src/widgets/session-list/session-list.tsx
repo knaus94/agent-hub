@@ -1,4 +1,15 @@
-import { Archive, ArchiveRestore, ChevronDown, Columns2, LogOut, MessagesSquare, SquarePen } from 'lucide-react';
+import {
+   Archive,
+   ArchiveRestore,
+   ChevronDown,
+   Columns2,
+   Ellipsis,
+   LogOut,
+   MessagesSquare,
+   PanelLeftClose,
+   PanelLeftOpen,
+   SquarePen,
+} from 'lucide-react';
 import { useId, useMemo, useState } from 'react';
 import type { SessionSummary } from '../../shared/protocol.ts';
 import { roomBeside, shownPanes, useHub } from '../../entities/hub/hub-store';
@@ -7,6 +18,8 @@ import { NotificationsToggle } from '../../features/notifications/notifications-
 import { t } from '../../shared/i18n';
 import { projectName } from '../../shared/lib/format';
 import { useNow } from '../../shared/lib/use-now';
+import { AppMark } from '../../shared/ui/app-mark';
+import { ChatMenu } from '../chat/chat-menu';
 import { LimitsPanel } from './limits-panel';
 import { SessionItem } from './session-item';
 import './session-list.css';
@@ -25,8 +38,8 @@ function groupByProject(sessions: SessionSummary[]) {
    return [...groups.values()];
 }
 
-// A chat in the list, with its buttons: always there on a touch screen, on hover or focus with a mouse. Dragged onto
-// the chats, or clicked with Ctrl, it opens beside them.
+// A chat in the list, with its buttons on hover or focus with a mouse; a touch screen has room for one, which opens
+// the chat's menu. Dragged onto the chats, or clicked with Ctrl, it opens beside them.
 function SessionRow({ session, openId, now }: { session: SessionSummary; openId: string | null; now: number }) {
    const archive = useHub((state) => state.archive);
    const openBeside = useHub((state) => state.openBeside);
@@ -38,6 +51,7 @@ function SessionRow({ session, openId, now }: { session: SessionSummary; openId:
    const label = t(session.archived ? 'chat.unarchive' : 'chat.archive');
    const Icon = session.archived ? ArchiveRestore : Archive;
    const beside = () => openBeside(session.id, focused + 1);
+   const [menu, setMenu] = useState(false);
    return (
       <li
          className="session-list-row"
@@ -70,6 +84,16 @@ function SessionRow({ session, openId, now }: { session: SessionSummary; openId:
                <Icon className="session-list-row-action-icon" aria-hidden="true" />
             </button>
          </span>
+         <button
+            className="session-list-row-more"
+            type="button"
+            onClick={() => setMenu(true)}
+            aria-label={t('chat.menu')}
+            title={t('chat.menu')}
+         >
+            <Ellipsis className="session-list-row-action-icon" aria-hidden="true" />
+         </button>
+         {menu && <ChatMenu session={session} open onClose={() => setMenu(false)} />}
       </li>
    );
 }
@@ -119,10 +143,15 @@ function ArchiveSection({ sessions, openId, now }: { sessions: SessionSummary[];
    );
 }
 
-export function SessionList() {
+// dock: the list's own button to put it away beside the chats ("hide") or to pin it there again ("pin").
+export function SessionList({ dock }: { dock?: 'hide' | 'pin' }) {
    const sessions = useHub((state) => state.sessions);
    const openId = useHub((state) => state.openId);
    const logout = useHub((state) => state.logout);
+   const toggleList = useHub((state) => state.toggleList);
+   const closeDrawer = useHub((state) => state.closeDrawer);
+   const DockIcon = dock === 'pin' ? PanelLeftOpen : PanelLeftClose;
+   const dockLabel = t(dock === 'pin' ? 'list.pin' : 'list.hide');
    const now = useNow(30_000);
    const active = useMemo(() => sessions.filter((session) => !session.archived), [sessions]);
    const archived = useMemo(() => sessions.filter((session) => session.archived), [sessions]);
@@ -133,19 +162,37 @@ export function SessionList() {
       <nav className="session-list" aria-label={t('list.title')}>
          <header className="session-list-header">
             <span className="session-list-brand">
-               <span className="session-list-logo" data-running={running > 0} aria-hidden="true" />
-               {t('app.name')}
+               <AppMark busy={running > 0} />
+               <span className="session-list-name">
+                  {t('app.name')}
+                  {running > 0 && <span className="session-list-running">{t('list.running', { count: running })}</span>}
+               </span>
             </span>
-            {running > 0 && <span className="session-list-running">{t('list.running', { count: running })}</span>}
             <NotificationsToggle />
             <button className="session-list-logout" type="button" onClick={logout} aria-label={t('app.logout')} title={t('app.logout')}>
                <LogOut className="session-list-logout-icon" aria-hidden="true" />
             </button>
          </header>
-         <a className="session-list-new" href="#/" aria-current={openId === null ? 'page' : undefined}>
-            <SquarePen className="session-list-new-icon" aria-hidden="true" />
-            {t('list.new')}
-         </a>
+         <div className="session-list-top">
+            <a className="session-list-new" href="#/" aria-current={openId === null ? 'page' : undefined}>
+               <SquarePen className="session-list-new-icon" aria-hidden="true" />
+               {t('list.new')}
+            </a>
+            {dock && (
+               <button
+                  className="session-list-dock"
+                  type="button"
+                  onClick={() => {
+                     closeDrawer();
+                     toggleList();
+                  }}
+                  aria-label={dockLabel}
+                  title={dockLabel}
+               >
+                  <DockIcon className="session-list-dock-icon" aria-hidden="true" />
+               </button>
+            )}
+         </div>
          <div className="session-list-groups">
             {active.length === 0 ? (
                <div className="session-list-empty">

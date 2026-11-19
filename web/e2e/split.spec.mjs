@@ -138,3 +138,31 @@ test('a pane loads older entries of a long chat', async ({ page }) => {
       .toBeGreaterThan(0);
    await expect(pane(page, 'короткий').getByText('Шаг 1', { exact: true })).toHaveCount(0);
 });
+
+test('the list is put away for room, slides in over the chats and is pinned back', async ({ page }) => {
+   for (const title of ['простор', 'второй простор', 'третий простор', 'четвёртый простор']) await startChat(page, title);
+   await page.getByRole('button', { name: 'Скрыть список чатов' }).click();
+   await expect(page.locator('.hub-page-sidebar')).toHaveCount(0);
+   await page.reload();
+   await expect(page.locator('.hub-page-sidebar')).toHaveCount(0);
+   // Without the list 1920 pixels hold four panes; the list slides in over them and does not take their room.
+   for (const title of ['простор', 'второй простор', 'третий простор']) {
+      await page.getByRole('button', { name: 'Показать список чатов' }).click();
+      await listed(page, title).click({ modifiers: ['ControlOrMeta'] });
+      await expect(page.getByRole('dialog', { name: 'Чаты' })).toBeHidden();
+   }
+   await expect(panes(page)).toHaveCount(4);
+   await page.getByRole('button', { name: 'Показать список чатов' }).click();
+   await page.getByRole('button', { name: 'Закрепить список чатов' }).click();
+   await expect(page.locator('.hub-page-sidebar')).toBeVisible();
+   await expect(panes(page)).toHaveCount(3);
+});
+
+test('sending from further up brings the view down to the answer', async ({ page }) => {
+   await startChat(page, 'many длинный');
+   await expect(page.getByRole('main').getByText('Все шаги сделаны')).toBeVisible();
+   await page.locator('.timeline').evaluate((element) => element.scrollTo({ top: 0 }));
+   await expect(page.getByRole('main').getByText('Все шаги сделаны')).not.toBeInViewport();
+   await sendIn(page.getByRole('main'), 'вниз');
+   await expect(page.getByRole('main').getByText('Ответ: вниз')).toBeInViewport();
+});

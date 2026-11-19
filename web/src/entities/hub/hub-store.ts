@@ -45,6 +45,8 @@ type HubState = {
    openId: string | null;
    chats: Record<string, ChatData>;
    drawerOpen: boolean;
+   // Whether the list beside the chats is put away on a wide screen, for their room.
+   listHidden: boolean;
    // The chat started from here last; it shows as starting until the hub lists it.
    startedId: string | null;
    // The chat the hub prepared for the new-chat screen, as Zed opens a session for a new thread, and what it offers.
@@ -91,10 +93,12 @@ type HubState = {
    showIn: (index: number, chat: Pane) => void;
    closePane: (index: number) => void;
    setShown: (shown: number) => void;
+   toggleList: () => void;
 };
 
 const TOKEN_KEY = 'agent-hub.token';
 const PANES_KEY = 'agent-hub.panes';
+const LIST_KEY = 'agent-hub.list-hidden';
 const RETRY_MIN = 1000;
 const RETRY_MAX = 10_000;
 const LIMITS_EVERY = 5 * 60_000;
@@ -224,6 +228,7 @@ export const useHub = create<HubState>()((set, get) => ({
    openId: initialOpenId,
    chats: {},
    drawerOpen: false,
+   listHidden: localStorage.getItem(LIST_KEY) === 'true',
    startedId: null,
    draft: null,
    draftCommands: [],
@@ -358,6 +363,11 @@ export const useHub = create<HubState>()((set, get) => ({
    },
    setShown: (shown) => {
       if (shown !== get().shown) set({ shown });
+   },
+   toggleList: () => {
+      const listHidden = !get().listHidden;
+      localStorage.setItem(LIST_KEY, String(listHidden));
+      set({ listHidden });
    },
 }));
 

@@ -2,7 +2,7 @@ import { Fragment, useLayoutEffect, useRef, useState, type DragEvent, type Keybo
 import { MAX_PANES, roomBeside, shownPanes, useHub, type Pane } from '../../entities/hub/hub-store';
 import { t } from '../../shared/i18n';
 import { useWide } from '../../shared/lib/use-wide';
-import { PaneClose } from '../app-bar/app-bar';
+import { PaneBar } from '../app-bar/app-bar';
 import { CHAT_DRAG } from '../../entities/session/chat-drag';
 import './panes.css';
 
@@ -173,7 +173,9 @@ export function Panes({ render }: { render: (chat: Pane) => ReactNode }) {
                   onDragOverCapture={(event) => dragOver(index, event)}
                   onDropCapture={(event) => dropChat(index, event)}
                >
-                  <PaneClose.Provider value={closable ? () => closePane(index) : null}>{render(panes[index])}</PaneClose.Provider>
+                  <PaneBar.Provider value={{ close: closable ? () => closePane(index) : null, list: position === 0 }}>
+                     {render(panes[index])}
+                  </PaneBar.Provider>
                   {drop?.index === index && <div className="pane-drop" data-zone={drop.zone} aria-hidden="true" />}
                </div>
             </Fragment>
