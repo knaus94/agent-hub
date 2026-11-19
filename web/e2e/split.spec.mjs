@@ -110,3 +110,31 @@ test('the panes and their widths come back after a reload', async ({ page }) => 
    await expect(pane(page, 'после').getByText('Ответ: после')).toBeVisible();
    await expect(page.getByRole('separator', { name: 'Граница между чатами' })).toHaveAttribute('aria-valuenow', '60');
 });
+
+test('the panes come back whole from the bare address', async ({ page }) => {
+   for (const title of ['утро', 'вечер']) await startChat(page, title);
+   await listed(page, 'утро').click({ modifiers: ['ControlOrMeta'] });
+   const address = page.url();
+   await page.goto('/');
+   await expect(panes(page)).toHaveCount(2);
+   await expect(pane(page, 'утро').getByText('Ответ: утро')).toBeVisible();
+   await expect(pane(page, 'вечер').getByText('Ответ: вечер')).toBeVisible();
+   await expect(page).toHaveURL(address);
+});
+
+test('a pane loads older entries of a long chat', async ({ page }) => {
+   await startChat(page, 'many шаги');
+   await expect(page.getByRole('main').getByText('Все шаги сделаны')).toBeVisible();
+   await startChat(page, 'короткий');
+   await listed(page, 'many шаги').click({ modifiers: ['ControlOrMeta'] });
+   const long = pane(page, 'many шаги');
+   await expect(long.getByText('Шаг 120', { exact: true })).toBeVisible();
+   await expect(long.getByText('Шаг 1', { exact: true })).toHaveCount(0);
+   await expect
+      .poll(async () => {
+         await long.locator('.timeline').evaluate((element) => element.scrollTo({ top: 0 }));
+         return long.getByText('Шаг 1', { exact: true }).count();
+      })
+      .toBeGreaterThan(0);
+   await expect(pane(page, 'короткий').getByText('Шаг 1', { exact: true })).toHaveCount(0);
+});

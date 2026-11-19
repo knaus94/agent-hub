@@ -1,5 +1,5 @@
 import { X } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import type { SessionSummary } from '../../shared/protocol.ts';
 import { useHub } from '../../entities/hub/hub-store';
 import { ChatSessionId } from '../../entities/session/chat-session';
@@ -51,6 +51,8 @@ export function Chat({ session }: { session: SessionSummary }) {
    const voice = useHub((state) => state.voice);
    const openFile = useHub((state) => state.openFile);
    // Kept the same between renders: every message reads it, and a new one would draw them all again.
+   // Kept the same too: the timeline asks for older entries from an effect that would run again for a new one.
+   const older = useCallback(() => loadOlder(session.id), [loadOlder, session.id]);
    const files = useMemo(() => ({ open: (path: string) => openFile(session.id, path), base: '' }), [session.id, openFile]);
    const running = session.online && session.status === 'running';
    // A slash command sent during a turn waits in the hub for the turn to end; until it shows in the chat, say so.
@@ -78,7 +80,7 @@ export function Chat({ session }: { session: SessionSummary }) {
                   entries={entries}
                   start={chat?.start ?? 0}
                   session={session}
-                  onOlder={() => loadOlder(session.id)}
+                  onOlder={older}
                   onFollow={(following) => setReading(!following)}
                />
             </MarkdownFiles.Provider>

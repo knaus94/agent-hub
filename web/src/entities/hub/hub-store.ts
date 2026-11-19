@@ -110,8 +110,8 @@ function hashOf(chat: Pane) {
 }
 
 // The panes kept from the last visit, with the chat the address names in use: in its pane if it has one, in place of
-// the chat that was in use if not.
-function readPanes(openId: Pane) {
+// the chat that was in use if not. An address naming nothing, as the app's icon opens it, keeps them as they were.
+function readPanes(openId: Pane | undefined) {
    let panes: Pane[] = [null];
    let focused = 0;
    try {
@@ -126,6 +126,7 @@ function readPanes(openId: Pane) {
    } catch {
       // A broken record starts over with one pane.
    }
+   if (openId === undefined) return { panes, focused };
    const at = panes.indexOf(openId);
    if (at >= 0) return { panes, focused: at };
    panes = panes.slice();
@@ -155,8 +156,9 @@ function takeTokenFromUrl() {
 
 const initialToken = takeTokenFromUrl() ?? localStorage.getItem(TOKEN_KEY);
 if (initialToken) localStorage.setItem(TOKEN_KEY, initialToken);
-const initialOpenId = readOpenId();
-const initialPanes = readPanes(initialOpenId);
+const initialPanes = readPanes(location.hash === '' ? undefined : readOpenId());
+const initialOpenId = initialPanes.panes[initialPanes.focused];
+if (location.hash === '') history.replaceState(null, '', hashOf(initialOpenId));
 
 let socket: WebSocket | null = null;
 let retry = RETRY_MIN;

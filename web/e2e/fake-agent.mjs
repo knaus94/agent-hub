@@ -3,6 +3,7 @@
 //    "ask"  asks for a permission first and says which option was chosen;
 //    "slow" writes its reply over a few seconds;
 //    "doc"  names a Markdown file of the project;
+//    "many" takes 120 steps first, more than a page of the hub's history;
 // anything else is answered at once with "Ответ: <prompt>".
 import { randomUUID } from 'node:crypto';
 import { createInterface } from 'node:readline';
@@ -48,6 +49,18 @@ async function prompt(sessionId, text) {
          await sleep(500);
       }
       say(sessionId, ` — готово: ${text}`);
+      return 'end_turn';
+   }
+   if (/\bmany\b/.test(text)) {
+      for (let step = 1; step <= 120; step++)
+         write({
+            method: 'session/update',
+            params: {
+               sessionId,
+               update: { sessionUpdate: 'tool_call', toolCallId: randomUUID(), title: `Шаг ${step}`, kind: 'read', status: 'completed' },
+            },
+         });
+      say(sessionId, 'Все шаги сделаны');
       return 'end_turn';
    }
    if (/\bdoc\b/.test(text)) {
