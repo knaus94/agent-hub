@@ -88,6 +88,8 @@ export function Composer({
    const hintId = useId();
    const menuId = useId();
    const fromDevice = attach !== null && (attach.images || attach.files);
+   // A chat whose relay started before attachments: its button says what to do instead of being missing.
+   const outdated = attach !== null && !attach.links;
    // The word being typed, when it starts with "@": a project file being looked for.
    const mention = attach?.links && findFiles ? /(?:^|\s)@([^\s@]*)$/.exec(text)?.[1] : undefined;
    const files = mention !== undefined && found?.query === mention ? found.paths : [];
@@ -283,6 +285,18 @@ export function Composer({
                />
                <div className="composer-toolbar">
                   <div className="composer-accessory">{accessory}</div>
+                  {outdated && (
+                     <button
+                        className="composer-attach"
+                        type="button"
+                        data-outdated="true"
+                        onClick={() => setProblem(t('attach.outdated'))}
+                        aria-label={t('attach.add')}
+                        title={t('attach.outdated')}
+                     >
+                        <Paperclip className="composer-attach-icon" aria-hidden="true" />
+                     </button>
+                  )}
                   {fromDevice && (
                      <>
                         <button

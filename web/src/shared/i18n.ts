@@ -108,6 +108,7 @@ const ru = {
    'attach.remove': 'Убрать {name}',
    'attach.files': 'Файлы проекта',
    'attach.sending': 'Отправляю…',
+   'attach.outdated': 'Этот чат запущен в Zed до обновления хаба и принимает только текст. Перезапустите Zed, чтобы прикреплять файлы',
    'attach.error.unsupported': 'Такой файл этот агент не примет: {file}',
    'attach.error.large': 'Файл больше 3 МБ: {file}',
    'attach.error.total': 'Вложения вместе больше 4 МБ',

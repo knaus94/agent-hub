@@ -89,6 +89,10 @@
    transform: scale(0.92);
 }
 
+.composer-attach[data-outdated='true'] {
+   color: var(--color-text-faint);
+}
+
 .composer-attach-icon {
    width: var(--size-mark-icon);
    height: var(--size-mark-icon);
