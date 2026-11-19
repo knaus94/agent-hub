@@ -50,6 +50,44 @@
    text-align: center;
 }
 
+.sheet-panel[data-size='document'] {
+   height: calc(100dvh - max(var(--space-10), env(safe-area-inset-top)));
+   max-height: none;
+}
+
+.sheet-title[data-size='document'] {
+   padding-inline: var(--size-touch);
+   overflow-wrap: anywhere;
+}
+
+.sheet-close {
+   position: absolute;
+   inset-block-start: var(--space-2);
+   inset-inline-end: var(--space-2);
+   display: grid;
+   place-items: center;
+   width: var(--size-touch);
+   height: var(--size-touch);
+   padding: 0;
+   border: 0;
+   border-radius: var(--radius-md);
+   background: transparent;
+   color: var(--color-text-muted);
+   cursor: pointer;
+}
+
+@media (hover: hover) {
+   .sheet-close:hover {
+      background: var(--color-surface-hover);
+      color: var(--color-text);
+   }
+}
+
+.sheet-close-icon {
+   width: var(--size-icon);
+   height: var(--size-icon);
+}
+
 .sheet-body {
    min-height: 0;
    overflow-y: auto;
@@ -65,6 +103,11 @@
       border-radius: var(--radius-xl);
       transform: translate(-50%, -50%);
       animation-name: sheet-appear;
+   }
+
+   .sheet-panel[data-size='document'] {
+      width: min(var(--size-content), calc(100% - var(--space-8)));
+      height: calc(100dvh - var(--space-10) * 2);
    }
 
    .sheet-grip {

@@ -110,10 +110,16 @@ type Server struct {
 	voiceMu      sync.Mutex
 	// push is nil when its state could not be read; notifications are then off.
 	push *pushes
+	// transferring are the chats being moved to another agent, guarded by mu.
+	transferring map[string]bool
+	// limits are the subscription accounts' limits, nil until first read; the three are guarded by mu.
+	limits        []protocol.LimitAccount
+	limitsRead    time.Time
+	limitsReading bool
 }
 
 func NewServer(config Config, assets fs.FS) *Server {
-	s := &Server{config: config, assets: assets, logins: &logins{dir: config.Home}, timeline: NewTimeline(), clients: map[*client]struct{}{}, processes: map[string]*owned{}, drafts: map[string]*draft{}, ownedSessions: map[string]*owned{}, zed: newZedThreads(), voiceTickets: map[string]voiceTicket{}}
+	s := &Server{config: config, assets: assets, logins: &logins{dir: config.Home}, timeline: NewTimeline(), clients: map[*client]struct{}{}, processes: map[string]*owned{}, drafts: map[string]*draft{}, ownedSessions: map[string]*owned{}, zed: newZedThreads(), voiceTickets: map[string]voiceTicket{}, transferring: map[string]bool{}}
 	s.relays = &relays{dir: config.RelayDir, links: map[string]bool{}, apply: s.withTimeline}
 	return s
 }
@@ -326,6 +332,7 @@ type clientMessage struct {
 	Actions   *[]protocol.QuickAction `json:"actions"`
 	Visible   *bool                   `json:"visible"`
 	Endpoint  *string                 `json:"endpoint"`
+	Path      *string                 `json:"path"`
 	// Subscription is the browser's PushSubscription as JSON.
 	Subscription *struct {
 		Endpoint string `json:"endpoint"`
@@ -361,10 +368,16 @@ func parseClientMessage(data []byte) (clientMessage, bool) {
 		return m, m.SessionID != nil && m.Archived != nil
 	case "quick":
 		return m, m.Actions != nil
-	case "voice":
+	case "voice", "limits":
 		return m, true
 	case "visible":
 		return m, m.Visible != nil
+	case "transfer-options":
+		return m, m.SessionID != nil
+	case "file":
+		return m, m.SessionID != nil && m.Path != nil
+	case "transfer":
+		return m, m.SessionID != nil && m.AgentID != nil
 	case "push-subscribe":
 		return m, m.Subscription != nil
 	case "push-unsubscribe":
@@ -505,8 +518,16 @@ func (s *Server) handle(c *client, m clientMessage) bool {
 		s.setQuick(c, *m.Actions)
 	case "voice":
 		s.voiceTicketFor(c)
+	case "limits":
+		s.requestLimits(c)
 	case "visible":
 		c.visible = *m.Visible
+	case "transfer-options":
+		s.transferOptions(c, *m.SessionID)
+	case "file":
+		s.sendFile(c, *m.SessionID, *m.Path)
+	case "transfer":
+		s.transfer(c, *m.SessionID, *m.AgentID)
 	case "push-subscribe":
 		if s.pushKey() != "" {
 			subscription := pushSubscription{m.Subscription.Endpoint, m.Subscription.Keys.P256dh, m.Subscription.Keys.Auth, c.pushDevice()}

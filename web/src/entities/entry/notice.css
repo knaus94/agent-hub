@@ -1,9 +1,7 @@
 .notice {
-   display: flex;
-   flex-wrap: wrap;
-   justify-content: center;
-   gap: var(--space-1) var(--space-2);
-   margin: 0;
+   display: grid;
+   justify-items: center;
+   gap: var(--space-2);
    padding: var(--space-2) var(--space-3);
    border-radius: var(--radius-md);
    color: var(--color-text-faint);
@@ -16,8 +14,50 @@
    background: var(--color-danger-soft);
 }
 
+.notice-line {
+   display: flex;
+   flex-wrap: wrap;
+   justify-content: center;
+   gap: var(--space-1) var(--space-2);
+   margin: 0;
+}
+
 .notice-detail {
    min-width: 0;
    color: var(--color-text-muted);
    overflow-wrap: anywhere;
+}
+
+.notice-action {
+   display: inline-flex;
+   align-items: center;
+   gap: var(--space-2);
+   min-height: var(--size-mark);
+   padding: 0 var(--space-3);
+   border: 1px solid var(--color-border-strong);
+   border-radius: var(--radius-pill);
+   background: var(--color-surface-raised);
+   color: var(--color-text);
+   font: inherit;
+   font-size: var(--text-sm);
+   cursor: pointer;
+   transition: background var(--motion-fast) var(--ease-out);
+}
+
+@media (hover: hover) {
+   .notice-action:hover {
+      background: var(--color-surface-hover);
+   }
+}
+
+.notice-action-icon {
+   width: var(--size-icon);
+   height: var(--size-icon);
+   color: var(--color-accent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+   .notice-action {
+      transition: none;
+   }
 }

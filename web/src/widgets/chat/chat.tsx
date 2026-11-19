@@ -1,13 +1,16 @@
 import { X } from 'lucide-react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import type { SessionSummary } from '../../shared/protocol.ts';
 import { useHub } from '../../entities/hub/hub-store';
 import { Composer } from '../../features/composer/composer';
 import { ChatSettings } from '../../features/chat-settings/chat-settings';
+import { FileViewer } from '../../features/file-viewer/file-viewer';
 import { QuickBar } from '../../features/quick-actions/quick-bar';
 import { QuickManager } from '../../features/quick-actions/quick-manager';
+import { TransferSheet } from '../../features/transfer/transfer-sheet';
 import { VoiceInput } from '../../features/voice-input/voice-input';
 import { t } from '../../shared/i18n';
+import { MarkdownFiles } from '../../shared/ui/markdown';
 import { ChatHeader } from './chat-header';
 import { PlanPanel } from './plan-panel';
 import { Timeline } from './timeline';
@@ -38,9 +41,16 @@ export function Chat({ session }: { session: SessionSummary }) {
    const configure = useHub((state) => state.configure);
    const failure = useHub((state) => state.failure);
    const voice = useHub((state) => state.voice);
+   const openFile = useHub((state) => state.openFile);
+   // Kept the same between renders: every message reads it, and a new one would draw them all again.
+   const files = useMemo(() => ({ open: (path: string) => openFile(session.id, path), base: '' }), [session.id, openFile]);
    const running = session.online && session.status === 'running';
    // A slash command sent during a turn waits in the hub for the turn to end; until it shows in the chat, say so.
    const [queued, setQueued] = useState<string | null>(null);
+   // Reading further up folds the composer away for more room; it comes back at the end, and stays while typed in.
+   const [reading, setReading] = useState(false);
+   const [typing, setTyping] = useState(false);
+   const docked = !reading || typing;
    const lastUser = entries?.findLast((entry) => entry.kind === 'user');
    if (queued && ((lastUser?.kind === 'user' && lastUser.text.trim() === queued) || failure?.sessionId === session.id)) setQueued(null);
 
@@ -53,34 +63,53 @@ export function Chat({ session }: { session: SessionSummary }) {
    return (
       <section className="chat">
          <ChatHeader session={session} />
-         <Timeline entries={entries} start={entriesStart} session={session} onOlder={loadOlder} />
-         <div className="chat-footer">
-            <FailureBar sessionId={session.id} />
-            {session.plan.length > 0 && <PlanPanel plan={session.plan} />}
-            <Composer
-               placeholder={t(running ? 'composer.placeholder.running' : 'composer.placeholder')}
-               sendLabel={t(running ? 'composer.steer' : 'composer.send')}
-               onSend={onSend}
-               running={running}
-               onStop={cancel}
-               disabled={!session.online}
-               note={!session.online ? t('composer.offline') : queued ? t('composer.queued', { command: queued.split(/\s/)[0] }) : null}
-               commands={commands}
-               voice={voice ? (append) => <VoiceInput onText={append} /> : undefined}
-               quick={(insert) => (
-                  <QuickBar agent={session.agent} commands={commands} onSend={onSend} onInsert={insert} disabled={!session.online} />
-               )}
-               accessory={
-                  <div className="picker-row">
-                     <ChatSettings
-                        options={options}
-                        onChange={(configId, value) => configure(session.id, configId, value)}
-                        disabled={!session.online}
-                     />
-                     <QuickManager commands={commands} />
-                  </div>
-               }
+         <TransferSheet session={session} />
+         <FileViewer />
+         <MarkdownFiles.Provider value={files}>
+            <Timeline
+               entries={entries}
+               start={entriesStart}
+               session={session}
+               onOlder={loadOlder}
+               onFollow={(following) => setReading(!following)}
             />
+         </MarkdownFiles.Provider>
+         <div
+            className="chat-dock"
+            data-docked={docked}
+            inert={!docked}
+            onFocus={() => setTyping(true)}
+            // The window losing focus, as GNOME's input source switcher takes it for a moment, is not leaving the field.
+            onBlur={(event) => !event.currentTarget.contains(event.relatedTarget) && document.hasFocus() && setTyping(false)}
+         >
+            <div className="chat-footer">
+               <FailureBar sessionId={session.id} />
+               {session.plan.length > 0 && <PlanPanel plan={session.plan} />}
+               <Composer
+                  placeholder={t(running ? 'composer.placeholder.running' : 'composer.placeholder')}
+                  sendLabel={t(running ? 'composer.steer' : 'composer.send')}
+                  onSend={onSend}
+                  running={running}
+                  onStop={cancel}
+                  disabled={!session.online}
+                  note={!session.online ? t('composer.offline') : queued ? t('composer.queued', { command: queued.split(/\s/)[0] }) : null}
+                  commands={commands}
+                  voice={voice ? (append) => <VoiceInput onText={append} /> : undefined}
+                  quick={(insert) => (
+                     <QuickBar agent={session.agent} commands={commands} onSend={onSend} onInsert={insert} disabled={!session.online} />
+                  )}
+                  accessory={
+                     <div className="picker-row">
+                        <ChatSettings
+                           options={options}
+                           onChange={(configId, value) => configure(session.id, configId, value)}
+                           disabled={!session.online}
+                        />
+                        <QuickManager commands={commands} />
+                     </div>
+                  }
+               />
+            </div>
          </div>
       </section>
    );

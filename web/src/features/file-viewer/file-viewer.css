@@ -1,0 +1,33 @@
+.file-viewer {
+   display: grid;
+   gap: var(--space-4);
+   padding-inline: var(--space-2);
+   color: var(--color-text);
+   font-family: var(--font-reading);
+   font-size: var(--text-reading);
+   line-height: var(--leading-reading);
+}
+
+.file-viewer-path,
+.file-viewer-note,
+.file-viewer-error {
+   margin: 0;
+   font-family: var(--font-sans);
+   font-size: var(--text-sm);
+}
+
+.file-viewer-path {
+   color: var(--color-text-faint);
+   font-family: var(--font-mono);
+   font-size: var(--text-xs);
+   text-align: center;
+   overflow-wrap: anywhere;
+}
+
+.file-viewer-note {
+   color: var(--color-text-muted);
+}
+
+.file-viewer-error {
+   color: var(--color-danger);
+}

@@ -6,11 +6,14 @@ import type {
    ConfigOption,
    DeniedReason,
    Entry,
+   FileError,
+   LimitAccount,
    ProjectOption,
    QuickAction,
    QuestionResponse,
    ServerMessage,
    SessionSummary,
+   TransferTarget,
 } from '../../shared/protocol.ts';
 
 type Connection = 'connecting' | 'open' | 'lost';
@@ -45,6 +48,11 @@ type HubState = {
    voice: boolean;
    // The key to subscribe to notifications with; empty while the hub cannot send them.
    push: string;
+   limits: LimitAccount[];
+   // A chat being moved to another agent: where it can go, once the hub says, and whether the move is under way.
+   transfer: { sessionId: string; targets: TransferTarget[] | null; busy: boolean } | null;
+   // A Markdown file of the open chat's project being read: its text or why not, once the hub answers.
+   file: { sessionId: string; path: string; text: string | null; error: FileError | null } | null;
    enter: (code: string) => void;
    logout: () => void;
    send: (text: string) => void;
@@ -60,12 +68,18 @@ type HubState = {
    archive: (sessionId: string, archived: boolean) => void;
    saveQuick: (actions: QuickAction[]) => void;
    pushSubscribe: (subscription: PushSubscriptionJSON) => void;
+   openTransfer: (sessionId: string) => void;
+   closeTransfer: () => void;
+   startTransfer: (agentId: string) => void;
+   openFile: (sessionId: string, path: string) => void;
+   closeFile: () => void;
    pushUnsubscribe: (endpoint: string) => void;
 };
 
 const TOKEN_KEY = 'agent-hub.token';
 const RETRY_MIN = 1000;
 const RETRY_MAX = 10_000;
+const LIMITS_EVERY = 5 * 60_000;
 
 // "#/s/<id>" is a chat; anything else is a new chat.
 function readOpenId() {
@@ -140,8 +154,11 @@ export const useHub = create<HubState>()((set, get) => ({
    draftOptions: [],
    failure: null,
    quick: [],
+   limits: [],
    voice: false,
    push: '',
+   transfer: null,
+   file: null,
    enter: (code) => {
       set({ code, denied: null });
       connect();
@@ -150,7 +167,7 @@ export const useHub = create<HubState>()((set, get) => ({
       // The hub forgets this device first, so the token is useless even if it was copied.
       post({ type: 'logout' });
       localStorage.removeItem(TOKEN_KEY);
-      set({ token: null, sessions: [], entries: null });
+      set({ token: null, sessions: [], entries: null, limits: [], file: null });
       socket?.close();
    },
    send: (text) => {
@@ -189,6 +206,23 @@ export const useHub = create<HubState>()((set, get) => ({
    closeDrawer: () => set({ drawerOpen: false }),
    dismissFailure: () => set({ failure: null }),
    pushSubscribe: (subscription) => post({ type: 'push-subscribe', subscription }),
+   openTransfer: (sessionId) => {
+      set({ transfer: { sessionId, targets: null, busy: false }, failure: null });
+      post({ type: 'transfer-options', sessionId });
+   },
+   closeTransfer: () => set({ transfer: null }),
+   startTransfer: (agentId) => {
+      const transfer = get().transfer;
+      if (!transfer || transfer.busy) return;
+      set({ transfer: { ...transfer, busy: true }, failure: null });
+      post({ type: 'transfer', sessionId: transfer.sessionId, agentId });
+   },
+   // A file asked for while the socket is down is asked for again once it is back.
+   openFile: (sessionId, path) => {
+      set({ file: { sessionId, path, text: null, error: null } });
+      post({ type: 'file', sessionId, path });
+   },
+   closeFile: () => set({ file: null }),
    pushUnsubscribe: (endpoint) => post({ type: 'push-unsubscribe', endpoint }),
    saveQuick: (actions) => {
       set({ quick: actions });
@@ -226,6 +260,9 @@ function receive(message: ServerMessage) {
             quickUnsent = null;
          } else useHub.setState({ quick: message.quick });
          post({ type: 'open', sessionId: state.openId, ...(state.entries ? { from: state.entriesStart } : {}) });
+         post({ type: 'limits' });
+         if (state.file && state.file.text === null && state.file.error === null)
+            post({ type: 'file', sessionId: state.file.sessionId, path: state.file.path });
          return;
       case 'denied':
          if (message.reason === 'token') localStorage.removeItem(TOKEN_KEY);
@@ -237,6 +274,9 @@ function receive(message: ServerMessage) {
          return;
       case 'sessions':
          useHub.setState({ sessions: message.sessions });
+         return;
+      case 'limits':
+         useHub.setState({ limits: message.accounts });
          return;
       case 'quick':
          useHub.setState({ quick: message.actions });
@@ -291,6 +331,21 @@ function receive(message: ServerMessage) {
       }
       case 'failed':
          useHub.setState({ failure: message });
+         if (state.transfer?.sessionId === message.sessionId) useHub.setState({ transfer: { ...state.transfer, busy: false } });
+         return;
+      case 'transfer-options':
+         if (state.transfer?.sessionId === message.sessionId) useHub.setState({ transfer: { ...state.transfer, targets: message.targets } });
+         return;
+      case 'file':
+         if (state.file?.sessionId === message.sessionId && state.file.path === message.path)
+            useHub.setState({ file: { ...state.file, text: message.text, error: message.error } });
+         return;
+      case 'transferred':
+         // The move ends in the new chat.
+         if (state.transfer?.sessionId === message.from) {
+            useHub.setState({ transfer: null });
+            location.hash = `#/s/${encodeURIComponent(message.sessionId)}`;
+         }
          return;
    }
 }
@@ -324,6 +379,14 @@ function reportVisible() {
 
 document.addEventListener('visibilitychange', reportVisible);
 
+// Limits are asked for while the page is on screen.
+function askLimits() {
+   if (document.visibilityState === 'visible') post({ type: 'limits' });
+}
+
+document.addEventListener('visibilitychange', askLimits);
+setInterval(askLimits, LIMITS_EVERY);
+
 window.addEventListener('hashchange', () => {
    const openId = readOpenId();
    if (openId === useHub.getState().openId) {
@@ -331,7 +394,7 @@ window.addEventListener('hashchange', () => {
       return;
    }
    olderPending = false;
-   useHub.setState({ openId, drawerOpen: false, entries: null, entriesStart: 0, commands: [], options: [], failure: null });
+   useHub.setState({ openId, drawerOpen: false, entries: null, entriesStart: 0, commands: [], options: [], failure: null, file: null });
    // Asked only now: a reply that came before openId changed would be taken for the previous chat.
    post({ type: 'open', sessionId: openId });
 });

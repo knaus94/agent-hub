@@ -242,7 +242,9 @@ type steer struct {
 }
 
 type source struct {
-	id      string
+	id string
+	// name is the Zed agent entry the relay runs, which names its command and account.
+	name    string
 	label   string
 	account *string
 	agent   string
@@ -283,6 +285,9 @@ type session struct {
 	cwd       *string
 	title     *string
 	updatedAt int64
+	// turnAt is when the last turn began. The list is ordered by it: every chunk of a running turn touches
+	// updatedAt, and two chats at work would trade places all the time.
+	turnAt    int64
 	entries   []protocol.Entry
 	sequence  int
 	tools     map[string]int
@@ -377,7 +382,7 @@ func (t *Timeline) Attach(sourceID, name string, dropped int) {
 	}
 	label, account := describeSource(name)
 	t.sources[sourceID] = &source{
-		id: sourceID, label: label, account: account, agent: agentOf(name), online: true, owned: t.owned[sourceID],
+		id: sourceID, name: hubSuffix.ReplaceAllString(name, ""), label: label, account: account, agent: agentOf(name), online: true, owned: t.owned[sourceID],
 		creating: map[string]*string{}, prompts: map[string]string{}, steers: map[string]steer{}, configs: map[string]string{},
 		questions: map[string]questionRef{}, elicitations: map[string]questionRef{},
 	}
@@ -477,6 +482,47 @@ func (t *Timeline) Title(sessionID string) string {
 	return ""
 }
 
+// Origin is what moving a chat to another agent needs to know of it.
+type Origin struct {
+	// Agent is the Zed agent entry the chat runs on.
+	Agent   string
+	Label   string
+	Cwd     string
+	Title   string
+	Running bool
+	Entries []protocol.Entry
+}
+
+func (t *Timeline) Origin(sessionID string) (Origin, bool) {
+	s := t.sessions[sessionID]
+	if s == nil || t.sources[s.sourceID] == nil || s.replaying {
+		return Origin{}, false
+	}
+	src := t.sources[s.sourceID]
+	return Origin{src.name, src.label, deref(s.cwd), deref(t.summary(s).Title), len(s.prompts) > 0, slices.Clone(s.entries)}, true
+}
+
+// Cwd is the directory a chat works in, or "" when the chat is unknown or never said.
+func (t *Timeline) Cwd(sessionID string) string {
+	if s := t.sessions[sessionID]; s != nil {
+		return deref(s.cwd)
+	}
+	return ""
+}
+
+// resetTime is when a rate limit ends, as RFC 3339; Claude gives it in seconds or milliseconds since 1970.
+func resetTime(at *float64) *string {
+	if at == nil || *at <= 0 {
+		return nil
+	}
+	when := time.Unix(int64(*at), 0)
+	if *at > 1e12 {
+		when = time.UnixMilli(int64(*at))
+	}
+	value := when.UTC().Format(time.RFC3339)
+	return &value
+}
+
 func (t *Timeline) Find(sessionID string) *Target {
 	s := t.sessions[sessionID]
 	if s == nil || t.sources[s.sourceID] == nil {
@@ -486,13 +532,17 @@ func (t *Timeline) Find(sessionID string) *Target {
 }
 
 func (t *Timeline) Summaries() []protocol.SessionSummary {
-	summaries := make([]protocol.SessionSummary, 0, len(t.order))
+	shown := make([]*session, 0, len(t.order))
 	for _, id := range t.order {
 		if !t.hidden[id] {
-			summaries = append(summaries, t.summary(t.sessions[id]))
+			shown = append(shown, t.sessions[id])
 		}
 	}
-	sort.SliceStable(summaries, func(i, j int) bool { return summaries[i].UpdatedAt > summaries[j].UpdatedAt })
+	sort.SliceStable(shown, func(i, j int) bool { return shown[i].turnAt > shown[j].turnAt })
+	summaries := make([]protocol.SessionSummary, 0, len(shown))
+	for _, s := range shown {
+		summaries = append(summaries, t.summary(s))
+	}
 	return summaries
 }
 
@@ -698,7 +748,7 @@ func (t *Timeline) ensure(sessionID string, src *source, cwd *string) *session {
 			t.order = append(t.order, sessionID)
 		}
 		s = &session{
-			id: sessionID, sourceID: src.id, cwd: cwd, updatedAt: t.now(),
+			id: sessionID, sourceID: src.id, cwd: cwd, updatedAt: t.now(), turnAt: t.now(),
 			entries: []protocol.Entry{}, tools: map[string]int{}, prompts: map[string]struct{}{}, plan: []protocol.PlanItem{}, pending: map[int]bool{},
 		}
 		t.sessions[sessionID] = s
@@ -811,6 +861,7 @@ func (t *Timeline) fromClient(src *source, from string, m *message) {
 		if s == nil {
 			s = t.ensure(sessionID, src, nil)
 		}
+		s.turnAt = t.now()
 		text := promptText(params["prompt"])
 		if s.reuse != nil && s.reuse.text == text && s.reuse.index < len(s.entries) {
 			// A steer that found no running turn comes back as this prompt; keep its message.
@@ -881,7 +932,11 @@ func (t *Timeline) agentReply(src *source, m *message) {
 			t.stopTools(s)
 		}
 		t.closeQuestions(s)
+		// An account out of its limits says when it runs again; a client can offer another agent meanwhile.
+		limit := object(m.Error).object("data")
 		switch {
+		case failed && deref(limit.str("errorKind")) == "rate_limit":
+			t.notice(s, "rate-limited", resetTime(limit.object("rateLimit").number("resetsAt")))
 		case failed:
 			t.notice(s, "turn-failed", object(m.Error).str("message"))
 		case stopReason == "cancelled":

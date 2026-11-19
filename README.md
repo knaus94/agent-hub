@@ -8,6 +8,8 @@ agent-hub sits between Zed and its ACP agents (Claude Code, Codex and others). F
 - add a correction to a turn while it runs, or send the next message;
 - answer the agent's questions and permission requests;
 - start new chats in any project, with the agent's own models, effort levels, modes and slash commands;
+- see how much of the week each Claude and Codex subscription has spent, with a forecast;
+- read the Markdown files a chat mentions, such as plans and briefs, rendered: tap the path in the agent's message;
 - archive chats, keep quick-action buttons, dictate by voice and get push notifications when a turn ends.
 
 The web app's interface is in Russian for now.
@@ -74,6 +76,8 @@ agent-hub voice [off | voicekey | http <url> [model]]   voice input, off by defa
 - Whoever is logged in can do what the agents can, and agents usually run commands on this computer. Keep the authenticator to yourself.
 - `agent-hub share` publishes a local port with no login at all.
 - Notifications show the chat's title and the agent's question on the lock screen.
+- For the limits, the hub reads the Claude Code and Codex logins in the agents' config directories (`CLAUDE_CONFIG_DIR`, `CODEX_HOME` or their defaults) and asks the same usage endpoints the CLIs use, at most every five minutes while the web app is open. It never renews a token, and agents given an API key are left out.
+- A path to a Markdown file in a chat opens that file through the hub. It serves only `.md` and `.markdown` files, up to 1 MB, inside the directory the chat works in; symbolic links and `..` cannot lead out of it.
 
 ## Files
 

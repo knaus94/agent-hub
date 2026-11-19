@@ -65,11 +65,31 @@
    transition: background var(--motion-fast) var(--ease-out);
 }
 
+/* One line beside the send button: on a narrow composer the chips drop their icons, and what still does not fit
+   scrolls sideways. */
 .picker-row {
    display: flex;
-   flex-wrap: wrap;
    gap: var(--space-1);
    min-width: 0;
+   overflow-x: auto;
+   overscroll-behavior-x: contain;
+   scrollbar-width: none;
+   container-type: inline-size;
+}
+
+.picker-row::-webkit-scrollbar {
+   display: none;
+}
+
+.picker-row > .picker-chip {
+   flex: none;
+}
+
+@container (max-width: 300px) {
+   .picker-chip-icon:has(+ .picker-chip-text),
+   .picker-chip-text + .picker-chip-icon {
+      display: none;
+   }
 }
 
 .picker-chip-text {

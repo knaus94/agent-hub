@@ -108,6 +108,31 @@ type QuickAction struct {
 	Send   bool     `json:"send"`
 }
 
+// LimitAccount is a subscription account the agents use, with how much of its limits is spent.
+type LimitAccount struct {
+	ID    string `json:"id"`
+	Agent string `json:"agent"`
+	Email string `json:"email"`
+	// Error is "login" when the CLI has to sign in again and "unavailable" when the service did not answer; Limits
+	// are then the last ones read, at Checked (Unix milliseconds).
+	Error   string  `json:"error,omitempty"`
+	Checked int64   `json:"checked"`
+	Limits  []Limit `json:"limits"`
+}
+
+// Limit is one limit of an account: the whole subscription's week, or a model's own share of it.
+type Limit struct {
+	// Kind is "week" or "model", the model named by Model.
+	Kind    string  `json:"kind"`
+	Model   string  `json:"model,omitempty"`
+	Percent float64 `json:"percent"`
+	// ResetsAt is when the limit starts again, in Unix milliseconds; Window is how long it runs, in milliseconds.
+	ResetsAt int64 `json:"resetsAt"`
+	Window   int64 `json:"window"`
+	// Active is false for a limit the service marks as not in force now.
+	Active bool `json:"active"`
+}
+
 type Change struct {
 	Index int   `json:"index"`
 	Entry Entry `json:"entry"`

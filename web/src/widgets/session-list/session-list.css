@@ -114,6 +114,11 @@
    padding-block-end: max(var(--space-6), env(safe-area-inset-bottom));
 }
 
+/* The limits under the list take the bottom edge. */
+.session-list-groups:not(:last-child) {
+   padding-block-end: var(--space-3);
+}
+
 .session-list-group + .session-list-group {
    margin-block-start: var(--space-4);
 }

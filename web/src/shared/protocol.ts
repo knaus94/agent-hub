@@ -8,7 +8,12 @@ export type ToolStatus = 'pending' | 'in_progress' | 'completed' | 'failed';
 export type ToolContent =
    { type: 'text'; text: string } | { type: 'diff'; path: string; oldText: string | null; newText: string } | { type: 'terminal' };
 
-export type NoticeCode = 'cancelled' | 'turn-failed' | 'steer-failed' | 'history-cut';
+// rate-limited: the account is out of its limits; detail is when they reset, RFC 3339.
+export type NoticeCode = 'cancelled' | 'turn-failed' | 'rate-limited' | 'steer-failed' | 'history-cut';
+
+// Where a chat can be moved: "full" continues the whole conversation on another Claude account, "retell" starts a
+// new chat with its history.
+export type TransferTarget = { agentId: string; mode: 'full' | 'retell' };
 
 export type QuestionOption = { id: string; label: string; kind: string | null; description: string | null };
 
@@ -95,6 +100,23 @@ export type SessionSummary = {
 // kinds of agent it is offered for; empty means every agent.
 export type QuickAction = { id: string; label: string; text: string; agents: AgentKind[]; send: boolean };
 
+// A subscription account the agents run on. error: "login" when its CLI has to sign in again, "unavailable" when the
+// service did not answer; limits are then the last ones read, at checked.
+export type LimitAccount = {
+   id: string;
+   agent: AgentKind;
+   email: string;
+   error?: 'login' | 'unavailable';
+   checked: number;
+   limits: Limit[];
+};
+
+// One limit of an account: the whole subscription's week, or a model's own share. Times are Unix milliseconds.
+export type Limit = { kind: 'week' | 'model'; model?: string; percent: number; resetsAt: number; window: number; active: boolean };
+
+// Why a Markdown file of a chat's project was not given: no such file, not Markdown or outside the project, too large.
+export type FileError = 'missing' | 'denied' | 'large';
+
 export type AgentOption = { id: string; agent: AgentKind; label: string; account: string | null };
 
 export type ProjectOption = { path: string; name: string };
@@ -113,10 +135,14 @@ export type ServerMessage =
         push: string;
      }
    // Voice input: a ticket to upload one recording, then its text a piece at a time, then its end.
+   | { type: 'transfer-options'; sessionId: string; targets: TransferTarget[] }
+   | { type: 'transferred'; from: string; sessionId: string }
+   | { type: 'file'; sessionId: string; path: string; text: string | null; error: FileError | null }
    | { type: 'voice-ticket'; ticket: string }
    | { type: 'voice-text'; ticket: string; text: string }
    | { type: 'voice-end'; ticket: string; error?: string }
    | { type: 'quick'; actions: QuickAction[] }
+   | { type: 'limits'; accounts: LimitAccount[] }
    | { type: 'denied'; reason: DeniedReason }
    | { type: 'session'; token: string }
    | { type: 'sessions'; sessions: SessionSummary[] }
@@ -130,7 +156,15 @@ export type ServerMessage =
    | {
         type: 'failed';
         sessionId: string;
-        reason: 'offline' | 'steer-failed' | 'send-failed' | 'start-failed' | 'answer-failed' | 'configure-failed';
+        reason:
+           | 'offline'
+           | 'steer-failed'
+           | 'send-failed'
+           | 'start-failed'
+           | 'answer-failed'
+           | 'configure-failed'
+           | 'transfer-failed'
+           | 'transfer-running';
      };
 
 export type ClientMessage =
@@ -148,6 +182,12 @@ export type ClientMessage =
    | { type: 'answer'; sessionId: string; entryId: string; response: QuestionResponse }
    | { type: 'configure'; sessionId: string; configId: string; value: string | boolean }
    | { type: 'voice' }
+   // The agents' limits: sent at once, and read anew when they are older than a few minutes.
+   | { type: 'limits' }
+   | { type: 'transfer-options'; sessionId: string }
+   | { type: 'transfer'; sessionId: string; agentId: string }
+   // A Markdown file of the chat's project, by its path in the project, its absolute path or one starting with ~/.
+   | { type: 'file'; sessionId: string; path: string }
    // Whether the page is on screen: a chat open on a visible page is not notified of.
    | { type: 'visible'; visible: boolean }
    | { type: 'push-subscribe'; subscription: PushSubscriptionJSON }

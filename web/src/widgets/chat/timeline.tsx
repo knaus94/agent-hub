@@ -1,5 +1,5 @@
 import { ArrowDown } from 'lucide-react';
-import { memo, useLayoutEffect, useRef, useState } from 'react';
+import { memo, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { Entry, SessionSummary } from '../../shared/protocol.ts';
 import { AgentMessage } from '../../entities/entry/agent-message';
 import { Notice } from '../../entities/entry/notice';
@@ -15,6 +15,9 @@ import './timeline.css';
 const AT_END = 2;
 // How far a finger moves before it counts as scrolling rather than a tap.
 const TOUCH_SLOP = 6;
+// For this long after the view changes size its position shifts on its own; on an iPhone the bounce at the end
+// then reads as moving up, which would fold the composer that had just come back.
+const SETTLE = 300;
 
 type ToolEntry = Extract<Entry, { kind: 'tool' }>;
 type Item =
@@ -55,15 +58,19 @@ export function Timeline({
    start,
    session,
    onOlder,
+   onFollow,
 }: {
    entries: Entry[] | null;
    start: number;
    session: SessionSummary;
    onOlder: () => void;
+   // Told whether the view follows new output, at the very end, or the user is reading further up.
+   onFollow?: (following: boolean) => void;
 }) {
    const scroller = useRef<HTMLDivElement>(null);
    const stuck = useRef(true);
    const lastTop = useRef(0);
+   const resizedAt = useRef(0);
    const touchY = useRef<number | null>(null);
    // Entries present when the chat opened, and older ones loaded later, appear at once; only new ones animate in.
    const initialEnd = useRef<number | null>(null);
@@ -94,13 +101,26 @@ export function Timeline({
    const follow = (value: boolean) => {
       stuck.current = value;
       setShowLatest(!value);
+      onFollow?.(value);
    };
+
+   // The view changes size when the composer folds away or comes back; at the end it stays at the end.
+   useEffect(() => {
+      const element = scroller.current;
+      if (!element) return;
+      const observer = new ResizeObserver(() => {
+         resizedAt.current = performance.now();
+         if (stuck.current) element.scrollTop = element.scrollHeight;
+      });
+      observer.observe(element);
+      return () => observer.disconnect();
+   }, []);
 
    const onScroll = () => {
       const element = scroller.current;
       if (!element) return;
       if (element.scrollHeight - element.scrollTop - element.clientHeight <= AT_END) follow(true);
-      else if (element.scrollTop < lastTop.current) follow(false);
+      else if (element.scrollTop < lastTop.current && performance.now() - resizedAt.current > SETTLE) follow(false);
       lastTop.current = element.scrollTop;
       if (start > 0 && element.scrollTop < element.clientHeight) onOlder();
    };

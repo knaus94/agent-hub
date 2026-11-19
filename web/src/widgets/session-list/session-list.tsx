@@ -6,6 +6,7 @@ import { NotificationsToggle } from '../../features/notifications/notifications-
 import { t } from '../../shared/i18n';
 import { projectName } from '../../shared/lib/format';
 import { useNow } from '../../shared/lib/use-now';
+import { LimitsPanel } from './limits-panel';
 import { SessionItem } from './session-item';
 import './session-list.css';
 
@@ -128,6 +129,7 @@ export function SessionList() {
             )}
             {archived.length > 0 && <ArchiveSection sessions={archived} openId={openId} now={now} />}
          </div>
+         <LimitsPanel now={now} />
       </nav>
    );
 }

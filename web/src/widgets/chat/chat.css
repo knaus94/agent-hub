@@ -7,8 +7,26 @@
    animation: chat-enter var(--motion-enter) var(--ease-out);
 }
 
+/* Folds by its row height, so the timeline gets the room, not just a hidden composer over it. */
+.chat-dock {
+   display: grid;
+   grid-template-rows: 1fr;
+   transition: grid-template-rows var(--motion-base) var(--ease-out);
+}
+
+.chat-dock[data-docked='false'] {
+   grid-template-rows: 0fr;
+}
+
+.chat-dock[data-docked='false'] > .chat-footer {
+   overflow: hidden;
+   opacity: 0;
+}
+
 .chat-footer {
    position: relative;
+   min-height: 0;
+   transition: opacity var(--motion-fast) var(--ease-out);
    display: grid;
    gap: var(--space-2);
    width: 100%;
@@ -72,5 +90,10 @@
 @media (prefers-reduced-motion: reduce) {
    .chat {
       animation: none;
+   }
+
+   .chat-dock,
+   .chat-footer {
+      transition: none;
    }
 }

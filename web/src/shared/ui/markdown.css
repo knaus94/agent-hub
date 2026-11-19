@@ -24,6 +24,35 @@
    text-decoration-color: currentColor;
 }
 
+/* A path to a Markdown file of the project opens it to read: a link or code in look, a button underneath. */
+.md-file {
+   border: 0;
+   color: var(--color-accent);
+   font: inherit;
+   text-align: start;
+   text-decoration: underline dotted;
+   text-decoration-color: var(--color-accent-line);
+   text-underline-offset: 3px;
+   cursor: pointer;
+}
+
+.md-file.md-link {
+   padding: 0;
+   background: transparent;
+   text-decoration-style: solid;
+}
+
+.md-file.md-code {
+   font-family: var(--font-mono);
+   font-size: 0.88em;
+}
+
+@media (hover: hover) {
+   .md-file:hover {
+      text-decoration-color: currentColor;
+   }
+}
+
 .md-list {
    margin-block: 0 var(--space-3);
    padding-inline-start: var(--space-6);
@@ -41,6 +70,20 @@
 }
 
 .md-heading--small {
+   font-size: var(--text-md);
+}
+
+.md-heading--1 {
+   font-size: var(--text-xl);
+}
+
+.md-heading--2 {
+   padding-block-end: var(--space-1);
+   border-block-end: 1px solid var(--color-border);
+   font-size: var(--text-lg);
+}
+
+.md-heading--3 {
    font-size: var(--text-md);
 }
 
