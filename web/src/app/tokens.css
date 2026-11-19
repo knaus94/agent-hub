@@ -97,7 +97,7 @@
    --size-login: 400px;
    --size-output: 320px;
    --size-composer-max: 200px;
-   --size-command-menu: min(320px, 40dvh);
+   --size-suggestion-menu: min(320px, 40dvh);
    --size-quick-action: 220px;
    --size-switch-width: 44px;
    --size-switch-height: 26px;
@@ -109,6 +109,8 @@
    --size-limits-track: 6px;
    --size-limits-list: 40dvh;
    --size-thumb: 96px;
+   --size-attachment: 56px;
+   --size-attachment-name: 180px;
 
    --z-raised: 1;
    --z-sticky: 2;

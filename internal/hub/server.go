@@ -108,9 +108,11 @@ type Server struct {
 	// quick are the user's quick actions, guarded by mu.
 	quick   []protocol.QuickAction
 	quickMu sync.Mutex
-	// voiceTickets let browsers upload a recording each, guarded by mu; voiceMu lets one be recognised at a time.
-	voiceTickets map[string]voiceTicket
-	voiceMu      sync.Mutex
+	// tickets let browsers make an upload each, guarded by mu; voiceMu lets one recording be recognised at a time.
+	tickets map[string]ticket
+	voiceMu sync.Mutex
+	// projectFiles are the files of the projects chats work in, read for linking to from a message.
+	projectFiles projectLists
 	// push is nil when its state could not be read; notifications are then off.
 	push *pushes
 	// transferring are the chats being moved to another agent, guarded by mu.
@@ -122,7 +124,7 @@ type Server struct {
 }
 
 func NewServer(config Config, assets fs.FS) *Server {
-	s := &Server{config: config, assets: assets, logins: &logins{dir: config.Home}, timeline: NewTimeline(), clients: map[*client]struct{}{}, processes: map[string]*owned{}, drafts: map[string]*draft{}, ownedSessions: map[string]*owned{}, zed: newZedThreads(), voiceTickets: map[string]voiceTicket{}, transferring: map[string]bool{}}
+	s := &Server{config: config, assets: assets, logins: &logins{dir: config.Home}, timeline: NewTimeline(), clients: map[*client]struct{}{}, processes: map[string]*owned{}, drafts: map[string]*draft{}, ownedSessions: map[string]*owned{}, zed: newZedThreads(), tickets: map[string]ticket{}, projectFiles: projectLists{lists: map[string]projectList{}}, transferring: map[string]bool{}}
 	s.relays = &relays{dir: config.RelayDir, links: map[string]bool{}, apply: s.withTimeline}
 	return s
 }
@@ -210,6 +212,10 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		s.serveVoice(w, r)
 		return
 	}
+	if r.URL.Path == "/send" {
+		s.serveSend(w, r)
+		return
+	}
 	s.serveStatic(w, r)
 }
 
@@ -234,7 +240,7 @@ func (s *Server) serveStatic(w http.ResponseWriter, r *http.Request) {
 	} else {
 		header.Set("Cache-Control", "no-cache")
 	}
-	header.Set("Content-Security-Policy", "default-src 'self'; connect-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'")
+	header.Set("Content-Security-Policy", "default-src 'self'; connect-src 'self'; img-src 'self' data: blob:; style-src 'self'; script-src 'self'")
 	header.Set("X-Content-Type-Options", "nosniff")
 	header.Set("Referrer-Policy", "no-referrer")
 	_, _ = w.Write(data)
@@ -345,7 +351,8 @@ type clientMessage struct {
 			Auth   string `json:"auth"`
 		} `json:"keys"`
 	} `json:"subscription"`
-	Before *int `json:"before"`
+	Before *int    `json:"before"`
+	Query  *string `json:"query"`
 }
 
 // parseClientMessage accepts only the messages the web app sends: anyone who reaches the socket can send anything.
@@ -374,7 +381,7 @@ func parseClientMessage(data []byte) (clientMessage, bool) {
 		return m, m.SessionID != nil && m.Archived != nil
 	case "quick":
 		return m, m.Actions != nil
-	case "voice", "limits":
+	case "ticket", "limits":
 		return m, true
 	case "visible":
 		return m, m.Visible != nil
@@ -382,6 +389,8 @@ func parseClientMessage(data []byte) (clientMessage, bool) {
 		return m, m.SessionID != nil
 	case "file":
 		return m, m.SessionID != nil && m.Path != nil
+	case "project-files":
+		return m, m.SessionID != nil && m.Query != nil
 	case "transfer":
 		return m, m.SessionID != nil && m.AgentID != nil
 	case "push-subscribe":
@@ -506,15 +515,15 @@ func (s *Server) handle(c *client, m clientMessage) bool {
 				c.enqueue(encode(failedMessage{"failed", *m.SessionID, "offline"}))
 			} else {
 				go s.useDraft(*m.SessionID, *m.Text)
-				go s.deliver(c, *target, *m.SessionID, *m.Text)
+				go s.deliver(c, *target, *m.SessionID, *m.Text, nil)
 			}
 		}
 	case "archive":
 		s.archive(*m.SessionID, *m.Archived)
 	case "quick":
 		s.setQuick(c, *m.Actions)
-	case "voice":
-		s.voiceTicketFor(c)
+	case "ticket":
+		s.ticketFor(c)
 	case "limits":
 		s.requestLimits(c)
 	case "visible":
@@ -523,6 +532,8 @@ func (s *Server) handle(c *client, m clientMessage) bool {
 		s.transferOptions(c, *m.SessionID)
 	case "file":
 		s.sendFile(c, *m.SessionID, *m.Path)
+	case "project-files":
+		s.sendProjectFiles(c, *m.SessionID, *m.Query)
 	case "transfer":
 		s.transfer(c, *m.SessionID, *m.AgentID)
 	case "push-subscribe":
@@ -644,7 +655,7 @@ func (s *Server) login(c *client, m clientMessage) string {
 }
 
 // deliver steers a running turn, or starts a turn when there is none.
-func (s *Server) deliver(c *client, target Target, sessionID, text string) {
+func (s *Server) deliver(c *client, target Target, sessionID, text string, content []json.RawMessage) {
 	fail := func(reason string) { c.enqueue(encode(failedMessage{"failed", sessionID, reason})) }
 	// A slash command cannot join a running turn, so it waits for the turn to end, as Zed queues a message sent meanwhile.
 	if target.Running && s.isCommand(sessionID, text) {
@@ -660,7 +671,7 @@ func (s *Server) deliver(c *client, target Target, sessionID, text string) {
 		}
 	}
 	if target.Running {
-		reply, err := s.relays.command(target.SourceID, RelayCommand{Op: "steer", SessionID: sessionID, Text: text, Echo: true, PromptRequired: true})
+		reply, err := s.relays.command(target.SourceID, RelayCommand{Op: "steer", SessionID: sessionID, Text: text, Content: content, Echo: true, PromptRequired: true})
 		if err != nil {
 			fail("send-failed")
 			return
@@ -681,7 +692,7 @@ func (s *Server) deliver(c *client, target Target, sessionID, text string) {
 		}
 	}
 	// The reply comes when the turn ends; the timeline follows the turn on its own.
-	if _, err := s.relays.command(target.SourceID, RelayCommand{Op: "prompt", SessionID: sessionID, Text: text, Echo: true}); err != nil {
+	if _, err := s.relays.command(target.SourceID, RelayCommand{Op: "prompt", SessionID: sessionID, Text: text, Content: content, Echo: true}); err != nil {
 		fail("send-failed")
 	}
 }

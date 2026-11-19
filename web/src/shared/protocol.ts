@@ -64,7 +64,7 @@ export type ConfigOption = {
 
 export type Entry =
    // images: the pictures sent with the message.
-   | { kind: 'user'; id: string; text: string; origin: 'zed' | 'hub' | 'history'; steer: boolean; images?: Image[] }
+   | { kind: 'user'; id: string; text: string; origin: 'zed' | 'hub' | 'history'; steer: boolean; images?: Image[]; files?: string[] }
    | { kind: 'agent'; id: string; text: string }
    | { kind: 'thought'; id: string; text: string }
    | {
@@ -82,6 +82,9 @@ export type Entry =
    | QuestionEntry;
 
 export type PlanItem = { content: string; status: 'pending' | 'in_progress' | 'completed' };
+
+// What a message to the chat may carry besides text: links to project files, and pictures and files from the device.
+export type Attach = { links: boolean; images: boolean; files: boolean };
 
 export type SessionSummary = {
    id: string;
@@ -101,6 +104,7 @@ export type SessionSummary = {
    plan: PlanItem[];
    // Archived here or in Zed: listed apart, under the archive.
    archived: boolean;
+   attach: Attach;
 };
 
 // A button the user made: it sends its text to the chat, or puts it in the composer to finish. agents lists the
@@ -145,7 +149,8 @@ export type ServerMessage =
    | { type: 'transfer-options'; sessionId: string; targets: TransferTarget[] }
    | { type: 'transferred'; from: string; sessionId: string }
    | { type: 'file'; sessionId: string; path: string; text: string | null; error: FileError | null }
-   | { type: 'voice-ticket'; ticket: string }
+   | { type: 'ticket'; ticket?: string; error?: string }
+   | { type: 'project-files'; sessionId: string; query: string; paths: string[] }
    | { type: 'voice-text'; ticket: string; text: string }
    | { type: 'voice-end'; ticket: string; error?: string }
    | { type: 'quick'; actions: QuickAction[] }
@@ -157,7 +162,7 @@ export type ServerMessage =
    | { type: 'timeline'; sessionId: string; start: number; entries: Entry[] }
    | { type: 'older'; sessionId: string; start: number; entries: Entry[] }
    | { type: 'patch'; sessionId: string; changes: { index: number; entry: Entry }[] }
-   | { type: 'prepared'; agentId: string; cwd: string; sessionId: string }
+   | { type: 'prepared'; agentId: string; cwd: string; sessionId: string; attach: Attach }
    | { type: 'commands'; sessionId: string; commands: Command[] }
    | { type: 'options'; sessionId: string; options: ConfigOption[] }
    | {
@@ -188,7 +193,8 @@ export type ClientMessage =
    | { type: 'prepare'; agentId: string; cwd: string }
    | { type: 'answer'; sessionId: string; entryId: string; response: QuestionResponse }
    | { type: 'configure'; sessionId: string; configId: string; value: string | boolean }
-   | { type: 'voice' }
+   | { type: 'ticket' }
+   | { type: 'project-files'; sessionId: string; query: string }
    // The agents' limits: sent at once, and read anew when they are older than a few minutes.
    | { type: 'limits' }
    | { type: 'transfer-options'; sessionId: string }

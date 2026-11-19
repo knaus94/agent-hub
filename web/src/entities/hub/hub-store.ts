@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type {
    AgentOption,
+   Attach,
    ClientMessage,
    Command,
    ConfigOption,
@@ -50,7 +51,7 @@ type HubState = {
    // The chat started from here last; it shows as starting until the hub lists it.
    startedId: string | null;
    // The chat the hub prepared for the new-chat screen, as Zed opens a session for a new thread, and what it offers.
-   draft: { agentId: string; cwd: string; sessionId: string | null } | null;
+   draft: { agentId: string; cwd: string; sessionId: string | null; attach: Attach | null } | null;
    draftCommands: Command[];
    draftOptions: ConfigOption[];
    // What went wrong in each chat, by its id; a new chat that did not start is under "".
@@ -71,6 +72,8 @@ type HubState = {
    cancel: (sessionId: string) => void;
    prepare: (agentId: string, cwd: string) => void;
    sendDraft: (text: string) => void;
+   // Shows the chat the new-chat screen started in its place, once its first message went.
+   draftSent: () => void;
    answer: (sessionId: string, entryId: string, response: QuestionResponse) => void;
    configure: (sessionId: string, configId: string, value: string | boolean) => void;
    openDrawer: () => void;
@@ -175,12 +178,12 @@ export type VoiceEvent = { text?: string; end?: boolean; error?: string };
 let ticketWaiter: { resolve: (ticket: string) => void; reject: (error: Error) => void } | null = null;
 const voiceListeners = new Map<string, (event: VoiceEvent) => void>();
 
-// voiceTicket asks the hub for a ticket to upload one recording with.
-export function voiceTicket() {
+// uploadTicket asks the hub for a ticket to make one upload with: a recording, or a message with attachments.
+export function uploadTicket() {
    return new Promise<string>((resolve, reject) => {
       ticketWaiter?.reject(new Error('superseded'));
       ticketWaiter = { resolve, reject };
-      if (!post({ type: 'voice' })) {
+      if (!post({ type: 'ticket' })) {
          ticketWaiter = null;
          reject(new Error('no connection to the hub'));
       }
@@ -191,6 +194,21 @@ export function voiceTicket() {
 export function listenVoice(ticket: string, listener: (event: VoiceEvent) => void) {
    voiceListeners.set(ticket, listener);
    return () => voiceListeners.delete(ticket);
+}
+
+const fileSearches = new Map<string, (paths: string[]) => void>();
+
+// projectFiles asks the hub for the files of a chat's project that match what follows an @.
+export function projectFiles(sessionId: string, query: string) {
+   return new Promise<string[]>((resolve) => {
+      const key = `${sessionId}\0${query}`;
+      fileSearches.get(key)?.([]);
+      fileSearches.set(key, resolve);
+      if (!post({ type: 'project-files', sessionId, query })) {
+         fileSearches.delete(key);
+         resolve([]);
+      }
+   });
 }
 
 // Quick actions saved while the socket was down, sent once it is back instead of being replaced by the hub's list.
@@ -260,7 +278,7 @@ export const useHub = create<HubState>()((set, get) => ({
    prepare: (agentId, cwd) => {
       const draft = get().draft;
       if (draft?.agentId !== agentId || draft.cwd !== cwd)
-         set({ draft: { agentId, cwd, sessionId: null }, draftCommands: [], draftOptions: [] });
+         set({ draft: { agentId, cwd, sessionId: null, attach: null }, draftCommands: [], draftOptions: [] });
       if (get().failures['']?.reason === 'start-failed') set({ failures: without(get().failures, '') });
       post({ type: 'prepare', agentId, cwd });
    },
@@ -268,6 +286,11 @@ export const useHub = create<HubState>()((set, get) => ({
       const sessionId = get().draft?.sessionId;
       if (!sessionId) return;
       post({ type: 'send', sessionId, text });
+      get().draftSent();
+   },
+   draftSent: () => {
+      const sessionId = get().draft?.sessionId;
+      if (!sessionId) return;
       // The new chat takes the place of the new-chat screen it was started from.
       const { panes } = get();
       const at = Math.max(panes.indexOf(null), 0);
@@ -449,18 +472,22 @@ function receive(message: ServerMessage) {
       case 'quick':
          useHub.setState({ quick: message.actions });
          return;
-      case 'voice-ticket':
-         ticketWaiter?.resolve(message.ticket);
+      case 'ticket':
+         if (message.ticket) ticketWaiter?.resolve(message.ticket);
+         else ticketWaiter?.reject(new Error(message.error ?? 'no ticket'));
          ticketWaiter = null;
          return;
+      case 'project-files': {
+         const key = `${message.sessionId}\0${message.query}`;
+         fileSearches.get(key)?.(message.paths);
+         fileSearches.delete(key);
+         return;
+      }
       case 'voice-text':
          voiceListeners.get(message.ticket)?.({ text: message.text });
          return;
       case 'voice-end':
-         if (message.ticket === '') {
-            ticketWaiter?.reject(new Error(message.error ?? 'voice input is off'));
-            ticketWaiter = null;
-         } else voiceListeners.get(message.ticket)?.({ end: true, error: message.error });
+         voiceListeners.get(message.ticket)?.({ end: true, error: message.error });
          return;
       case 'timeline':
          olderPending.delete(message.sessionId);
@@ -496,7 +523,7 @@ function receive(message: ServerMessage) {
          const draft = state.draft;
          // A reply for an agent or project the user has since moved away from is left alone.
          if (draft?.agentId === message.agentId && draft.cwd === message.cwd)
-            useHub.setState({ draft: { ...draft, sessionId: message.sessionId } });
+            useHub.setState({ draft: { ...draft, sessionId: message.sessionId, attach: message.attach } });
          return;
       }
       case 'failed':

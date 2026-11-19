@@ -22,19 +22,21 @@ type relayEvent struct {
 	Dropped int             `json:"dropped"`
 	From    string          `json:"from"`
 	Message json.RawMessage `json:"message"`
+	Prompt  json.RawMessage `json:"prompt"`
 }
 
 // RelayCommand is what the hub asks a relay to do in one of its sessions.
 type RelayCommand struct {
-	Op             string          `json:"op"`
-	SessionID      string          `json:"sessionId"`
-	Text           string          `json:"text,omitempty"`
-	Echo           bool            `json:"echo,omitempty"`
-	PromptRequired bool            `json:"promptRequired,omitempty"`
-	ID             json.RawMessage `json:"id,omitempty"`
-	Result         json.RawMessage `json:"result,omitempty"`
-	ConfigID       string          `json:"configId,omitempty"`
-	Value          json.RawMessage `json:"value,omitempty"`
+	Op             string            `json:"op"`
+	SessionID      string            `json:"sessionId"`
+	Text           string            `json:"text,omitempty"`
+	Content        []json.RawMessage `json:"content,omitempty"`
+	Echo           bool              `json:"echo,omitempty"`
+	PromptRequired bool              `json:"promptRequired,omitempty"`
+	ID             json.RawMessage   `json:"id,omitempty"`
+	Result         json.RawMessage   `json:"result,omitempty"`
+	ConfigID       string            `json:"configId,omitempty"`
+	Value          json.RawMessage   `json:"value,omitempty"`
 }
 
 // RelayReply carries the agent's reply message, or the relay's own error.
@@ -111,7 +113,7 @@ func (r *relays) follow(sourceID string) {
 		switch event.Event {
 		case "hello":
 			attached = true
-			r.apply(func(t *Timeline) { t.Attach(sourceID, event.Name, event.Dropped) })
+			r.apply(func(t *Timeline) { t.Attach(sourceID, event.Name, event.Dropped, event.Prompt) })
 			// A relay older than the "live" event replays its history without saying when it is done.
 			time.AfterFunc(liveFallback, func() { r.apply(func(t *Timeline) { t.Live(sourceID) }) })
 		case "line":

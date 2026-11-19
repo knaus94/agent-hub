@@ -1,0 +1,83 @@
+.attachment-list {
+   display: flex;
+   flex-wrap: wrap;
+   gap: var(--space-2);
+   min-width: 0;
+   margin: 0;
+   padding: 0;
+   list-style: none;
+}
+
+.attachment {
+   position: relative;
+   display: flex;
+   align-items: center;
+   gap: var(--space-2);
+   min-width: 0;
+   height: var(--size-attachment);
+   padding-inline: var(--space-3) var(--space-1);
+   border: 1px solid var(--color-border);
+   border-radius: var(--radius-md);
+   background: var(--color-surface);
+   color: var(--color-text-muted);
+   font-size: var(--text-sm);
+}
+
+/* A picture is its square, with the button over its corner. */
+.attachment[data-kind='picture'] {
+   width: var(--size-attachment);
+   padding: 0;
+   overflow: hidden;
+}
+
+.attachment-picture {
+   display: block;
+   width: 100%;
+   height: 100%;
+   object-fit: cover;
+}
+
+.attachment-icon {
+   flex: none;
+   width: var(--size-icon);
+   height: var(--size-icon);
+}
+
+.attachment-name {
+   max-width: var(--size-attachment-name);
+   overflow: hidden;
+   text-overflow: ellipsis;
+   white-space: nowrap;
+}
+
+.attachment-remove {
+   display: grid;
+   flex: none;
+   place-items: center;
+   padding: var(--space-1);
+   border: 0;
+   border-radius: var(--radius-sm);
+   background: transparent;
+   color: var(--color-text-faint);
+   cursor: pointer;
+}
+
+.attachment[data-kind='picture'] .attachment-remove {
+   position: absolute;
+   inset-block-start: var(--space-half);
+   inset-inline-end: var(--space-half);
+   background: var(--color-scrim);
+   color: var(--color-text);
+}
+
+@media (hover: hover) {
+   .attachment-remove:hover {
+      background: var(--color-surface-hover);
+      color: var(--color-text);
+   }
+}
+
+.attachment-remove-icon {
+   width: var(--size-icon);
+   height: var(--size-icon);
+}

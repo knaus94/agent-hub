@@ -23,8 +23,13 @@
 }
 
 .composer-box:focus-within,
-.composer-box[data-running='true'] {
+.composer-box[data-running='true'],
+.composer-box[data-dropping='true'] {
    border-color: var(--color-accent-line);
+}
+
+.composer-box[data-dropping='true'] {
+   background: var(--color-accent-soft);
 }
 
 .composer-fieldset:disabled .composer-box {
@@ -62,6 +67,33 @@
    min-width: 0;
 }
 
+.composer-attach {
+   display: grid;
+   flex: none;
+   place-items: center;
+   width: var(--size-mark);
+   height: var(--size-mark);
+   padding: 0;
+   border: 0;
+   border-radius: var(--radius-md);
+   background: transparent;
+   color: var(--color-text-muted);
+   cursor: pointer;
+   transition:
+      background var(--motion-fast) var(--ease-out),
+      color var(--motion-fast) var(--ease-out),
+      transform var(--motion-fast) var(--ease-out);
+}
+
+.composer-attach:active {
+   transform: scale(0.92);
+}
+
+.composer-attach-icon {
+   width: var(--size-mark-icon);
+   height: var(--size-mark-icon);
+}
+
 .composer-send,
 .composer-stop {
    display: grid;
@@ -84,6 +116,11 @@
 }
 
 @media (hover: hover) {
+   .composer-attach:hover {
+      background: var(--color-surface-hover);
+      color: var(--color-text);
+   }
+
    .composer-send:hover:not(:disabled) {
       background: var(--color-accent-strong);
    }
@@ -140,11 +177,13 @@
 
 @media (prefers-reduced-motion: reduce) {
    .composer-box,
+   .composer-attach,
    .composer-send,
    .composer-stop {
       transition: none;
    }
 
+   .composer-attach:active,
    .composer-send:active:not(:disabled),
    .composer-stop:active {
       transform: none;

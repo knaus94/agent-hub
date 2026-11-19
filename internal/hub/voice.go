@@ -39,22 +39,11 @@ const (
 	voiceWindow = voiceRate / 10 * 2
 	// Five minutes of speech.
 	voiceMaxBytes = 5 * 60 * voiceRate * 2
-	// A ticket lets one recording be uploaded, soon after the browser asked for it over its socket.
-	voiceTicketTTL = time.Minute
-	voiceTimeout   = 160 * time.Second
+	voiceTimeout  = 160 * time.Second
 )
 
-type voiceTicket struct {
-	client  *client
-	expires time.Time
-}
-
-// The browser asks for a ticket over its socket, uploads the recording with it, and gets the text back on the socket
-// a piece at a time: a reply to the upload itself could outlast what Cloudflare waits for.
-type voiceTicketMessage struct {
-	Type   string `json:"type"`
-	Ticket string `json:"ticket"`
-}
+// The browser uploads the recording with a ticket and gets the text back on its socket a piece at a time: a reply to
+// the upload itself could outlast what Cloudflare waits for.
 
 type voiceTextMessage struct {
 	Type   string `json:"type"`
@@ -68,27 +57,6 @@ type voiceEndMessage struct {
 	Error  string `json:"error,omitempty"`
 }
 
-// voiceTicketFor gives a browser a ticket for one recording. The caller holds s.mu.
-func (s *Server) voiceTicketFor(c *client) {
-	if s.config.Voice == nil {
-		c.enqueue(encode(voiceEndMessage{"voice-end", "", "voice input is off"}))
-		return
-	}
-	now := time.Now()
-	for ticket, held := range s.voiceTickets {
-		if now.After(held.expires) {
-			delete(s.voiceTickets, ticket)
-		}
-	}
-	ticket, err := randomToken()
-	if err != nil {
-		c.enqueue(encode(voiceEndMessage{"voice-end", "", err.Error()}))
-		return
-	}
-	s.voiceTickets[ticket] = voiceTicket{c, now.Add(voiceTicketTTL)}
-	c.enqueue(encode(voiceTicketMessage{"voice-ticket", ticket}))
-}
-
 // serveVoice takes a recording uploaded with a ticket and recognises it in the background.
 func (s *Server) serveVoice(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
@@ -96,22 +64,23 @@ func (s *Server) serveVoice(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	ticket := r.URL.Query().Get("ticket")
-	s.mu.Lock()
-	held, found := s.voiceTickets[ticket]
-	delete(s.voiceTickets, ticket)
-	s.mu.Unlock()
-	if !found || time.Now().After(held.expires) {
+	c := s.spendTicket(ticket)
+	if c == nil {
 		http.Error(w, "forbidden", http.StatusForbidden)
+		return
+	}
+	if s.config.Voice == nil {
+		http.Error(w, "voice input is off", http.StatusNotFound)
 		return
 	}
 	pcm, err := io.ReadAll(http.MaxBytesReader(w, r.Body, voiceMaxBytes))
 	if err != nil {
 		http.Error(w, "recording too long", http.StatusRequestEntityTooLarge)
-		held.client.enqueue(encode(voiceEndMessage{"voice-end", ticket, "recording too long"}))
+		c.enqueue(encode(voiceEndMessage{"voice-end", ticket, "recording too long"}))
 		return
 	}
 	w.WriteHeader(http.StatusAccepted)
-	go s.recogniseFor(held.client, ticket, pcm)
+	go s.recogniseFor(c, ticket, pcm)
 }
 
 // recogniseFor recognises one recording piece by piece, one recording at a time, and sends each piece's text as it

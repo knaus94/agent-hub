@@ -1,6 +1,6 @@
 import { Check, Mic, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
-import { listenVoice, voiceTicket } from '../../entities/hub/hub-store';
+import { listenVoice, uploadTicket } from '../../entities/hub/hub-store';
 import { t } from '../../shared/i18n';
 import { ShimmerText } from '../../shared/ui/shimmer-text';
 import { MAX_SECONDS, record, type Recording } from './recorder';
@@ -50,7 +50,7 @@ export function VoiceInput({ onText }: { onText: (text: string) => void }) {
       const samples = current.stop();
       setPhase('recognising');
       try {
-         const ticket = await voiceTicket();
+         const ticket = await uploadTicket();
          const stop = listenVoice(ticket, (event) => {
             if (event.text) onText(event.text);
             if (event.end) {

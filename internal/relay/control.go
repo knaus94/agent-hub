@@ -11,15 +11,16 @@ import (
 )
 
 type command struct {
-	Op             string          `json:"op"`
-	SessionID      string          `json:"sessionId"`
-	Text           string          `json:"text"`
-	Echo           bool            `json:"echo"`
-	PromptRequired bool            `json:"promptRequired"`
-	ID             json.RawMessage `json:"id"`
-	Result         json.RawMessage `json:"result"`
-	ConfigID       string          `json:"configId"`
-	Value          json.RawMessage `json:"value"`
+	Op             string            `json:"op"`
+	SessionID      string            `json:"sessionId"`
+	Text           string            `json:"text"`
+	Content        []json.RawMessage `json:"content"`
+	Echo           bool              `json:"echo"`
+	PromptRequired bool              `json:"promptRequired"`
+	ID             json.RawMessage   `json:"id"`
+	Result         json.RawMessage   `json:"result"`
+	ConfigID       string            `json:"configId"`
+	Value          json.RawMessage   `json:"value"`
 }
 
 type textBlock struct {
@@ -113,14 +114,20 @@ func (r *Relay) run(request command) (json.RawMessage, error) {
 		r.toAgentMessage(map[string]any{"jsonrpc": "2.0", "method": "session/cancel", "params": map[string]string{"sessionId": request.SessionID}})
 		return json.RawMessage(`{"sent":true}`), nil
 	}
-	if request.Text == "" {
-		return nil, errors.New("text is required")
+	var prompt []any
+	if request.Text != "" {
+		prompt = append(prompt, textBlock{"text", request.Text})
 	}
-	prompt := []textBlock{{"text", request.Text}}
+	for _, block := range request.Content {
+		prompt = append(prompt, block)
+	}
+	if len(prompt) == 0 {
+		return nil, errors.New("text or content is required")
+	}
 	switch request.Op {
 	case "prompt":
 		if request.Echo {
-			r.echoUserMessage(request.SessionID, request.Text)
+			r.echoUserMessage(request.SessionID, prompt)
 		}
 		return r.requestAgent("session/prompt", map[string]any{"sessionId": request.SessionID, "prompt": prompt}), nil
 	case "steer":
@@ -136,7 +143,7 @@ func (r *Relay) run(request command) (json.RawMessage, error) {
 		}
 		_ = json.Unmarshal(reply, &outcome)
 		if request.Echo && (outcome.Result.Outcome == "injected" || outcome.Result.Outcome == "startedNewTurn") {
-			r.echoUserMessage(request.SessionID, request.Text)
+			r.echoUserMessage(request.SessionID, prompt)
 		}
 		return reply, nil
 	}
@@ -198,8 +205,10 @@ func (r *Relay) configure(sessionID, configID string, value json.RawMessage) jso
 }
 
 // echoUserMessage shows the client a prompt it did not send, so its thread has the user's message.
-func (r *Relay) echoUserMessage(sessionID, text string) {
-	r.updateClient(sessionID, map[string]any{"sessionUpdate": "user_message_chunk", "content": textBlock{"text", text}})
+func (r *Relay) echoUserMessage(sessionID string, prompt []any) {
+	for _, block := range prompt {
+		r.updateClient(sessionID, map[string]any{"sessionUpdate": "user_message_chunk", "content": block})
+	}
 }
 
 func (r *Relay) updateClient(sessionID string, update any) {

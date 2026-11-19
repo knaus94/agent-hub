@@ -32,7 +32,7 @@ func sent(c *client) []string {
 
 func newViewServer() (*Server, *client) {
 	timeline := NewTimeline()
-	timeline.Attach("src", "Claude (test)", 0)
+	timeline.Attach("src", "Claude (test)", 0, nil)
 	timeline.Live("src")
 	say(timeline, "a", "one")
 	say(timeline, "b", "two")

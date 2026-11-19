@@ -12,6 +12,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/knaus94/agent-hub/internal/protocol"
 	"github.com/knaus94/agent-hub/internal/relay"
 )
 
@@ -28,6 +29,8 @@ type owned struct {
 	sequence int
 	pending  map[int]chan rpcReply
 	done     chan struct{}
+	// attach is what its chats take besides text: its relay is this binary's, so it passes attachments on.
+	attach protocol.Attach
 }
 
 type rpcReply struct {
@@ -90,7 +93,7 @@ func (s *Server) spawn(agent agentEntry, cwd string) (*owned, error) {
 		_ = cmd.Wait()
 		close(process.done)
 	}()
-	_, err = process.request("initialize", map[string]any{
+	initialized, err := process.request("initialize", map[string]any{
 		"protocolVersion": 1,
 		"clientCapabilities": map[string]any{
 			"_meta":       map[string]any{"terminal_output": true},
@@ -103,6 +106,14 @@ func (s *Server) spawn(agent agentEntry, cwd string) (*owned, error) {
 		_ = cmd.Process.Kill()
 		return nil, err
 	}
+	var answer struct {
+		AgentCapabilities struct {
+			PromptCapabilities promptCapabilities `json:"promptCapabilities"`
+		} `json:"agentCapabilities"`
+	}
+	_ = json.Unmarshal(initialized, &answer)
+	prompt := answer.AgentCapabilities.PromptCapabilities
+	process.attach = protocol.Attach{Links: true, Images: prompt.Image, Files: prompt.EmbeddedContext}
 	// The relay's socket exists by now; following it at once makes the new chat appear without waiting for a scan.
 	s.relays.scan()
 	return process, nil

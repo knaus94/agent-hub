@@ -33,6 +33,8 @@ type preparedMessage struct {
 	AgentID   string `json:"agentId"`
 	Cwd       string `json:"cwd"`
 	SessionID string `json:"sessionId"`
+	// Attach is told here: a draft is not among the chats listed, and the timeline may not have it yet.
+	Attach protocol.Attach `json:"attach"`
 }
 
 func (s *Server) prepare(c *client, agentID, cwd string) {
@@ -55,7 +57,7 @@ func (s *Server) prepare(c *client, agentID, cwd string) {
 	if commands == nil {
 		commands = []protocol.Command{}
 	}
-	c.enqueue(encode(preparedMessage{"prepared", agentID, cwd, d.sessionID}))
+	c.enqueue(encode(preparedMessage{"prepared", agentID, cwd, d.sessionID, d.process.attach}))
 	c.enqueue(encode(optionsMessage{"options", d.sessionID, options}))
 	c.enqueue(encode(commandsMessage{"commands", d.sessionID, commands}))
 }

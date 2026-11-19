@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
-import { useHub } from '../../entities/hub/hub-store';
+import { useCallback, useEffect, useState } from 'react';
+import { projectFiles, useHub } from '../../entities/hub/hub-store';
 import { AgentMark } from '../../entities/session/agent-mark';
 import { ChatSettings } from '../../features/chat-settings/chat-settings';
+import { sendWithAttachments, type Attachment } from '../../features/composer/attachments';
 import { Composer } from '../../features/composer/composer';
 import { QuickBar } from '../../features/quick-actions/quick-bar';
 import { QuickManager } from '../../features/quick-actions/quick-manager';
@@ -37,6 +38,7 @@ export function NewChatPage() {
    const draftCommands = useHub((state) => state.draftCommands);
    const prepare = useHub((state) => state.prepare);
    const sendDraft = useHub((state) => state.sendDraft);
+   const draftSent = useHub((state) => state.draftSent);
    const configure = useHub((state) => state.configure);
    const voice = useHub((state) => state.voice);
    const [agentChoice, setAgentChoice] = useState<string | null>(null);
@@ -53,6 +55,8 @@ export function NewChatPage() {
    );
    const agentOption = agents.find((option) => option.id === agent);
    const sessionId = draft?.agentId === agent && draft.cwd === project ? draft.sessionId : null;
+   const attach = sessionId ? (draft?.attach ?? null) : null;
+   const findFiles = useCallback((query: string) => (sessionId ? projectFiles(sessionId, query) : Promise.resolve([])), [sessionId]);
    const failed = failure?.reason === 'start-failed';
 
    useEffect(() => {
@@ -67,10 +71,11 @@ export function NewChatPage() {
       };
    }, [connected, agent, project, prepare]);
 
-   const send = (text: string) => {
-      if (!agent || !project) return;
+   const send = (text: string, attachments: Attachment[] = []) => {
+      if (!agent || !project || !sessionId) return;
       localStorage.setItem(AGENT_KEY, agent);
       localStorage.setItem(PROJECT_KEY, project);
+      if (attachments.length > 0) return sendWithAttachments(sessionId, text, attachments).then(draftSent);
       sendDraft(text);
    };
 
@@ -111,6 +116,8 @@ export function NewChatPage() {
                   </div>
                }
                commands={sessionId ? draftCommands : undefined}
+               attach={attach}
+               findFiles={attach?.links ? findFiles : undefined}
                voice={voice ? (append) => <VoiceInput onText={append} /> : undefined}
                quick={(insert) => (
                   <QuickBar agent={agentOption?.agent ?? null} commands={draftCommands} onSend={send} onInsert={insert} disabled={!sessionId} />

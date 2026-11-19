@@ -1,6 +1,9 @@
 import { expect, test } from '@playwright/test';
 import { composer, listed, login, startChat } from './helpers.mjs';
 
+// A red pixel.
+const PIXEL = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==';
+
 // One chat on screen, as before chats could be shown side by side.
 
 test.beforeEach(async ({ page }) => login(page));
@@ -56,4 +59,26 @@ test('pictures in a chat show as thumbnails and open at full size', async ({ pag
    await thumbnails.first().click();
    await viewer.getByRole('button', { name: 'Закрыть' }).click();
    await expect(viewer).toHaveCount(0);
+});
+
+test('a message carries a picture and a file from the device and a file of the project', async ({ page }) => {
+   await startChat(page, 'привет вложения');
+   const main = page.getByRole('main');
+   await expect(main.getByText('Ответ: привет вложения')).toBeVisible();
+   await main.locator('input[type=file]').setInputFiles([
+      { name: 'shot.png', mimeType: 'image/png', buffer: Buffer.from(PIXEL, 'base64') },
+      { name: 'заметки.txt', mimeType: 'text/plain', buffer: Buffer.from('заметка') },
+   ]);
+   await composer(main).fill('смотри @brie');
+   await main.getByRole('option', { name: /brief\.md/ }).click();
+   const attached = main.getByRole('list', { name: 'Вложения' });
+   await expect(attached.getByRole('img', { name: 'shot.png' })).toBeVisible();
+   await expect(attached.getByText('заметки.txt')).toBeVisible();
+   await expect(attached.getByText('brief.md')).toBeVisible();
+   await main.getByRole('button', { name: 'Отправить' }).click();
+   await expect(main.getByText('Получено: картинка image/png, файл attachment:///заметки.txt: заметка, ссылка brief.md.')).toBeVisible();
+   await expect(main.getByText('Ответ: смотри')).toBeVisible();
+   await expect(main.getByRole('button', { name: 'Открыть картинку 1' })).toBeVisible();
+   await expect(composer(main)).toHaveValue('');
+   await expect(main.getByRole('img', { name: 'shot.png' })).toHaveCount(0);
 });

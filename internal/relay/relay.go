@@ -60,8 +60,11 @@ type wire struct {
 		} `json:"update"`
 	} `json:"params"`
 	Result struct {
-		SessionID string `json:"sessionId"`
-		Outcome   string `json:"outcome"`
+		SessionID         string `json:"sessionId"`
+		Outcome           string `json:"outcome"`
+		AgentCapabilities *struct {
+			PromptCapabilities json.RawMessage `json:"promptCapabilities"`
+		} `json:"agentCapabilities"`
 	} `json:"result"`
 }
 
@@ -123,6 +126,8 @@ type Relay struct {
 	// whose late reply from the client must not reach the agent a second time.
 	asked    map[string]bool
 	answered map[string]bool
+	// prompt is what the agent said its prompts may hold besides text, from its answer to initialize.
+	prompt json.RawMessage
 }
 
 // Run relays between this process's stdio and the agent command until the agent exits, and returns its exit code.
@@ -287,7 +292,11 @@ func (r *Relay) track(source from, line []byte) {
 	raw := bytes.TrimRight(line, "\r\n")
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	r.history.remember(source, raw, message)
+	// The relay's own updates to the client are echoes no subscriber reads back; out of the history, a picture sent from
+	// the hub takes its room once, not twice.
+	if source != fromRelay || message.Method != "session/update" {
+		r.history.remember(source, raw, message)
+	}
 	event := lineEvent(source, raw)
 	for watcher := range r.watchers {
 		watcher.push(event, true)
@@ -309,6 +318,9 @@ func (r *Relay) track(source from, line []byte) {
 	case source == fromClient && (message.Method == "session/load" || message.Method == "session/resume") && message.Params.SessionID != "":
 		r.remember(message.Params.SessionID, message.Params.Cwd)
 	case source == fromAgent && message.Method == "":
+		if capabilities := message.Result.AgentCapabilities; capabilities != nil {
+			r.prompt = capabilities.PromptCapabilities
+		}
 		if cwd, found := r.creating[id]; found {
 			delete(r.creating, id)
 			if message.Result.SessionID != "" {
@@ -353,6 +365,8 @@ func (r *Relay) subscribe(conn *connection) *subscriber {
 		"cwd":       currentDir(),
 		"startedAt": r.startedAt,
 		"dropped":   r.history.dropped,
+		// Its presence says the relay passes on attachments; a relay without it sends text alone.
+		"prompt": r.prompt,
 	})
 	watcher.push(append(hello, '\n'), false)
 	r.history.each(func(source from, raw []byte) {

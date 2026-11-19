@@ -11,6 +11,7 @@ agent-hub sits between Zed and its ACP agents (Claude Code, Codex and others). F
 - see how much of the week each Claude and Codex subscription has spent, with a forecast;
 - open up to four chats side by side on a wide screen: drag one from the list, Ctrl-click it or use its "open beside" button;
 - read the Markdown files a chat mentions, such as plans and briefs, rendered: tap the path in the agent's message;
+- attach pictures, PDFs and text files from the phone, and files of the project after `@`, as Zed does;
 - archive chats, keep quick-action buttons, dictate by voice and get push notifications when a turn ends.
 
 The web app's interface is in Russian for now.
@@ -53,7 +54,7 @@ To let an AI coding agent do the installation and setup, give it [docs/install-p
    agent-hub up
    ```
 
-3. **Zed.** Restart Zed so its agents start through the relay.
+3. **Zed.** Restart Zed so its agents start through the relay. After an update too: a chat keeps the relay it started with, and one older than attachments passes on text alone.
 4. **Phone.** Open the address and log in with a code. On an iPhone, add the page to the Home Screen, open it from there and turn notifications on with the bell in the chat list.
 5. **Voice, optional.** `agent-hub voice voicekey`, or `agent-hub voice http <url> [model]` for a Whisper-compatible server (its key, if any, from `AGENT_HUB_VOICE_KEY`). Off by default.
 
@@ -79,6 +80,7 @@ agent-hub voice [off | voicekey | http <url> [model]]   voice input, off by defa
 - Notifications show the chat's title and the agent's question on the lock screen.
 - For the limits, the hub reads the Claude Code and Codex logins in the agents' config directories (`CLAUDE_CONFIG_DIR`, `CODEX_HOME` or their defaults) and asks the same usage endpoints the CLIs use, at most every five minutes while the web app is open. It never renews a token, and agents given an API key are left out.
 - A path to a Markdown file in a chat opens that file through the hub. It serves only `.md` and `.markdown` files, up to 1 MB, inside the directory the chat works in; symbolic links and `..` cannot lead out of it.
+- Attachments are uploaded to the hub with a one-time ticket from the logged-in socket and go into the agent's prompt; nothing is written to disk. The hub tells a file's kind by its bytes and takes pictures, PDFs and text up to 3 MB each, 4 MB in all. After `@` it lists the files of the chat's directory (`git ls-files` in a repository), and a link goes only to a regular file inside it.
 
 ## Files
 

@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"maps"
+	"net/url"
+	"path"
 	"regexp"
 	"slices"
 	"sort"
@@ -92,16 +94,45 @@ func imageOf(raw json.RawMessage) *protocol.Image {
 	return &protocol.Image{MimeType: mime, Data: data}
 }
 
-func promptImages(raw json.RawMessage) []protocol.Image {
+// fileOf is the name of the file a prompt block holds or links to.
+func fileOf(raw json.RawMessage) *string {
+	block := object(raw)
+	var uri *string
+	switch deref(block.str("type")) {
+	case "resource":
+		uri = block.object("resource").str("uri")
+	case "resource_link":
+		if name := block.str("name"); name != nil && *name != "" {
+			return name
+		}
+		uri = block.str("uri")
+	default:
+		return nil
+	}
+	if uri == nil || *uri == "" {
+		return nil
+	}
+	name := path.Base(*uri)
+	if unescaped, err := url.PathUnescape(name); err == nil {
+		name = unescaped
+	}
+	return &name
+}
+
+// promptAttachments are the pictures and the names of the files a prompt holds besides its text.
+func promptAttachments(raw json.RawMessage) ([]protocol.Image, []string) {
 	var blocks []json.RawMessage
 	_ = json.Unmarshal(raw, &blocks)
 	var images []protocol.Image
+	var files []string
 	for _, block := range blocks {
 		if image := imageOf(block); image != nil {
 			images = append(images, *image)
+		} else if file := fileOf(block); file != nil {
+			files = append(files, *file)
 		}
 	}
-	return images
+	return images, files
 }
 
 func promptText(raw json.RawMessage) string {
@@ -290,6 +321,15 @@ type source struct {
 	// questions are the agent's requests waiting for the user, by request id; url forms also by elicitation id.
 	questions    map[string]questionRef
 	elicitations map[string]questionRef
+	// content says the relay passes attachments on; prompt is what the agent takes in a prompt besides text.
+	content bool
+	prompt  promptCapabilities
+}
+
+// promptCapabilities are what an agent said its prompts may hold besides text and links.
+type promptCapabilities struct {
+	Image           bool `json:"image"`
+	EmbeddedContext bool `json:"embeddedContext"`
 }
 
 type questionRef struct {
@@ -322,10 +362,10 @@ type session struct {
 	tools     map[string]int
 	streaming *streaming
 	echo      *string
-	// echoImages counts the pictures of the prompt just sent that the agent may still echo.
-	echoImages int
-	reuse      *reuse
-	prompts    map[string]struct{}
+	// echoAttached counts the pictures and files of the prompt just sent that the agent may still echo.
+	echoAttached int
+	reuse        *reuse
+	prompts      map[string]struct{}
 	// Zed closed the session: its agent process no longer holds it, so nothing can be sent to it there.
 	closed  bool
 	options []option
@@ -404,7 +444,9 @@ func NewTimeline() *Timeline {
 
 // Attach starts or restarts a source. A new subscription replays the relay's history, so whatever the source built
 // before is rebuilt from scratch.
-func (t *Timeline) Attach(sourceID, name string, dropped int) {
+// Attach starts following a relay; prompt is what its hello says the agent takes, absent from a relay too old to pass
+// attachments on.
+func (t *Timeline) Attach(sourceID, name string, dropped int, prompt json.RawMessage) {
 	for _, id := range append([]string(nil), t.order...) {
 		if t.sessions[id].sourceID == sourceID {
 			t.forget(id)
@@ -415,8 +457,9 @@ func (t *Timeline) Attach(sourceID, name string, dropped int) {
 	t.sources[sourceID] = &source{
 		id: sourceID, name: hubSuffix.ReplaceAllString(name, ""), label: label, account: account, agent: agentOf(name), online: true, owned: t.owned[sourceID],
 		creating: map[string]*string{}, prompts: map[string]string{}, steers: map[string]steer{}, configs: map[string]string{},
-		questions: map[string]questionRef{}, elicitations: map[string]questionRef{},
+		questions: map[string]questionRef{}, elicitations: map[string]questionRef{}, content: len(prompt) > 0,
 	}
+	_ = json.Unmarshal(prompt, &t.sources[sourceID].prompt)
 	t.changes.Sessions = true
 	if dropped > 0 {
 		t.pendingCut[sourceID] = true
@@ -503,6 +546,7 @@ type Target struct {
 	SourceID string
 	Online   bool
 	Running  bool
+	Attach   protocol.Attach
 }
 
 // Title is what the chat list calls a session.
@@ -559,7 +603,8 @@ func (t *Timeline) Find(sessionID string) *Target {
 	if s == nil || t.sources[s.sourceID] == nil {
 		return nil
 	}
-	return &Target{SourceID: s.sourceID, Online: t.sources[s.sourceID].online && !s.closed, Running: len(s.prompts) > 0}
+	src := t.sources[s.sourceID]
+	return &Target{SourceID: s.sourceID, Online: src.online && !s.closed, Running: len(s.prompts) > 0, Attach: src.attach()}
 }
 
 func (t *Timeline) Summaries() []protocol.SessionSummary {
@@ -711,8 +756,12 @@ func (t *Timeline) summary(s *session) protocol.SessionSummary {
 		ID: s.id, Agent: src.agent, Label: src.label, Account: src.account, Cwd: s.cwd, Title: title, Status: status,
 		Activity: activity, Preview: preview, Online: src.online && !s.closed, UpdatedAt: s.updatedAt, Model: model,
 		Mode: optionLabel(s.options, "mode", s.modeID), Context: s.context, Plan: s.plan,
-		Archived: t.IsArchived(s.id),
+		Archived: t.IsArchived(s.id), Attach: src.attach(),
 	}
+}
+
+func (src *source) attach() protocol.Attach {
+	return protocol.Attach{Links: src.content, Images: src.content && src.prompt.Image, Files: src.content && src.prompt.EmbeddedContext}
 }
 
 var markdownMarks = strings.NewReplacer("**", "", "__", "", "`", "")
@@ -905,11 +954,13 @@ func (t *Timeline) fromClient(src *source, from string, m *message) {
 			if from == "client" && !src.owned {
 				origin = "zed"
 			}
-			t.push(s, protocol.UserEntry{Kind: "user", ID: t.nextID(s), Text: text, Origin: origin, Images: promptImages(params["prompt"])})
+			images, files := promptAttachments(params["prompt"])
+			t.push(s, protocol.UserEntry{Kind: "user", ID: t.nextID(s), Text: text, Origin: origin, Images: images, Files: files})
 		}
 		s.reuse = nil
 		s.echo = &text
-		s.echoImages = len(promptImages(params["prompt"]))
+		images, files := promptAttachments(params["prompt"])
+		s.echoAttached = len(images) + len(files)
 		s.prompts[id] = struct{}{}
 		src.prompts[id] = sessionID
 		t.touch(s)
@@ -918,7 +969,8 @@ func (t *Timeline) fromClient(src *source, from string, m *message) {
 		if s == nil {
 			return
 		}
-		index := t.push(s, protocol.UserEntry{Kind: "user", ID: t.nextID(s), Text: promptText(params["prompt"]), Origin: "hub", Steer: true, Images: promptImages(params["prompt"])})
+		images, files := promptAttachments(params["prompt"])
+		index := t.push(s, protocol.UserEntry{Kind: "user", ID: t.nextID(s), Text: promptText(params["prompt"]), Origin: "hub", Steer: true, Images: images, Files: files})
 		src.steers[id] = steer{s.id, index}
 	}
 }
@@ -932,6 +984,10 @@ func (t *Timeline) agentReply(src *source, m *message) {
 			t.configure(t.ensure(*sessionID, src, cwd), result)
 		}
 		return
+	}
+	if capabilities := result.object("agentCapabilities"); capabilities != nil {
+		_ = json.Unmarshal(capabilities["promptCapabilities"], &src.prompt)
+		t.changes.Sessions = true
 	}
 	if name := result.object("agentInfo").str("name"); name != nil && *name != "" {
 		src.agent = agentOf(*name)
@@ -956,7 +1012,7 @@ func (t *Timeline) agentReply(src *source, m *message) {
 			return
 		}
 		delete(s.prompts, id)
-		s.echo, s.echoImages = nil, 0
+		s.echo, s.echoAttached = nil, 0
 		stopReason := deref(result.str("stopReason"))
 		failed := present(m.Error)
 		limit := object(m.Error).object("data")
@@ -1059,10 +1115,13 @@ func (t *Timeline) fromAgent(src *source, m *message) {
 func (t *Timeline) reduce(s *session, update fields) {
 	switch deref(update.str("sessionUpdate")) {
 	case "user_message_chunk":
-		if image := imageOf(update["content"]); image != nil {
-			t.userImage(s, *image)
+		content := update["content"]
+		if image := imageOf(content); image != nil {
+			t.userAttachment(s, func(user *protocol.UserEntry) { user.Images = append(user.Images, *image) })
+		} else if file := fileOf(content); file != nil {
+			t.userAttachment(s, func(user *protocol.UserEntry) { user.Files = append(user.Files, *file) })
 		} else {
-			t.userChunk(s, textOf(update["content"]))
+			t.userChunk(s, textOf(content))
 		}
 	case "agent_message_chunk":
 		t.chunk(s, "agent", textOf(update["content"]), update.str("messageId"))
@@ -1133,21 +1192,23 @@ func (t *Timeline) userChunk(s *session, text *string) {
 	s.streaming = &streaming{kind: "user", index: index}
 }
 
-// userImage adds a picture to the user's message being replayed; one echoing the prompt just sent is already there.
-func (t *Timeline) userImage(s *session, image protocol.Image) {
-	if s.echoImages > 0 {
-		s.echoImages--
+// userAttachment adds a picture or a file to the user's message being replayed; one echoing the prompt just sent is
+// already there.
+func (t *Timeline) userAttachment(s *session, add func(*protocol.UserEntry)) {
+	if s.echoAttached > 0 {
+		s.echoAttached--
 		return
 	}
 	if s.streaming != nil && s.streaming.kind == "user" {
 		if user, ok := s.entries[s.streaming.index].(protocol.UserEntry); ok {
-			user.Images = append(user.Images, image)
+			add(&user)
 			t.replace(s, s.streaming.index, user)
 			return
 		}
 	}
-	index := t.push(s, protocol.UserEntry{Kind: "user", ID: t.nextID(s), Origin: "history", Images: []protocol.Image{image}})
-	s.streaming = &streaming{kind: "user", index: index}
+	user := protocol.UserEntry{Kind: "user", ID: t.nextID(s), Origin: "history"}
+	add(&user)
+	s.streaming = &streaming{kind: "user", index: t.push(s, user)}
 }
 
 func sameID(a, b *string) bool {

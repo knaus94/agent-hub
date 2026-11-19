@@ -47,8 +47,9 @@ type UserEntry struct {
 	Text   string `json:"text"`
 	Origin string `json:"origin"`
 	Steer  bool   `json:"steer"`
-	// Images are the pictures sent with the message.
-	Images []Image `json:"images,omitempty"`
+	// Images are the pictures sent with the message, Files the names of the files attached or linked to.
+	Images []Image  `json:"images,omitempty"`
+	Files  []string `json:"files,omitempty"`
 }
 
 // TextEntry is an agent message ("agent") or its reasoning ("thought").
@@ -111,6 +112,15 @@ type SessionSummary struct {
 	Context   *Context   `json:"context"`
 	Plan      []PlanItem `json:"plan"`
 	Archived  bool       `json:"archived"`
+	Attach    Attach     `json:"attach"`
+}
+
+// Attach is what a message to a chat may carry besides text: links to project files once its relay passes them on,
+// and pictures and files from the device when the agent takes them as well.
+type Attach struct {
+	Links  bool `json:"links"`
+	Images bool `json:"images"`
+	Files  bool `json:"files"`
 }
 
 // QuickAction is a button the user made: it sends its text to the chat, or puts it in the composer to finish. Agents

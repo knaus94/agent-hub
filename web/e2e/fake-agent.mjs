@@ -5,7 +5,8 @@
 //    "doc"  names a Markdown file of the project;
 //    "many" takes 120 steps first, more than a page of the hub's history;
 //    "picture" reads an image file and replays a picture of the user's, as a chat loaded from history does;
-// anything else is answered at once with "Ответ: <prompt>".
+// anything else is answered at once with "Ответ: <prompt>". What a prompt holds besides text is listed first, after
+// "Получено:".
 import { randomUUID } from 'node:crypto';
 import { createInterface } from 'node:readline';
 
@@ -105,7 +106,14 @@ async function handle(message) {
    const { id, method, params } = message;
    switch (method) {
       case 'initialize':
-         return write({ id, result: { protocolVersion: 1, agentCapabilities: { loadSession: false }, authMethods: [] } });
+         return write({
+            id,
+            result: {
+               protocolVersion: 1,
+               agentCapabilities: { loadSession: false, promptCapabilities: { image: true, embeddedContext: true } },
+               authMethods: [],
+            },
+         });
       case 'session/new':
          return write({ id, result: { sessionId: randomUUID() } });
       case 'session/prompt': {
@@ -113,6 +121,13 @@ async function handle(message) {
             .filter((block) => block.type === 'text')
             .map((block) => block.text)
             .join('');
+         const attached = params.prompt.flatMap((block) => {
+            if (block.type === 'image') return [`картинка ${block.mimeType}`];
+            if (block.type === 'resource') return [`файл ${block.resource.uri}: ${block.resource.text ?? block.resource.mimeType}`];
+            if (block.type === 'resource_link') return [`ссылка ${block.name}`];
+            return [];
+         });
+         if (attached.length > 0) say(params.sessionId, `Получено: ${attached.join(', ')}. `);
          return write({ id, result: { stopReason: await prompt(params.sessionId, text) } });
       }
       case 'session/cancel':

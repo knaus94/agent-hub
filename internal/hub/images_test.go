@@ -9,7 +9,7 @@ import (
 
 func TestImagesReachTheTimeline(t *testing.T) {
 	timeline := NewTimeline()
-	timeline.Attach("src", "Claude (test)", 0)
+	timeline.Attach("src", "Claude (test)", 0, nil)
 	timeline.Live("src")
 	apply := func(from, message string) { timeline.Apply("src", from, json.RawMessage(message)) }
 
