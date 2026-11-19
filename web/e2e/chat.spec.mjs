@@ -38,3 +38,22 @@ test('the list puts another chat in place of the open one', async ({ page }) => 
    await composer(page).press('Enter');
    await expect(page.getByRole('main').getByText('Ответ: ещё раз')).toBeVisible();
 });
+
+test('pictures in a chat show as thumbnails and open at full size', async ({ page }) => {
+   await startChat(page, 'picture please');
+   const main = page.getByRole('main');
+   await expect(main.getByText('Картинка прочитана')).toBeVisible();
+   await main.getByText('Read shot.png').click();
+   const thumbnails = main.getByRole('button', { name: 'Открыть картинку 1' });
+   await expect(thumbnails).toHaveCount(2);
+   for (const thumbnail of await thumbnails.all())
+      await expect.poll(() => thumbnail.locator('img').evaluate((image) => image.complete && image.naturalWidth)).toBe(640);
+   await thumbnails.last().click();
+   const viewer = page.getByRole('dialog', { name: 'Картинка' });
+   await expect(viewer.locator('img')).toBeVisible();
+   await page.keyboard.press('Escape');
+   await expect(viewer).toHaveCount(0);
+   await thumbnails.first().click();
+   await viewer.getByRole('button', { name: 'Закрыть' }).click();
+   await expect(viewer).toHaveCount(0);
+});

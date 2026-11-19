@@ -81,6 +81,7 @@
    --shadow-raised: 0 12px 32px #00000073;
    --shadow-sheet: 0 -12px 40px #00000080;
    --color-scrim: #0d0d0c99;
+   --color-scrim-strong: #0d0d0ce6;
    --shadow-accent: 0 6px 20px #d9775740;
    --shadow-ring: inset 0 0 0 1px var(--color-border-strong);
 
@@ -107,6 +108,7 @@
    --size-limits-dot: 6px;
    --size-limits-track: 6px;
    --size-limits-list: 40dvh;
+   --size-thumb: 96px;
 
    --z-raised: 1;
    --z-sticky: 2;

@@ -161,6 +161,8 @@ const ru = {
    'file.error.denied': 'Открыть можно только Markdown-файлы из папки проекта чата',
    'file.error.large': 'Файл больше мегабайта, его лучше открыть на компьютере',
    'sheet.close': 'Закрыть',
+   'image.open': 'Открыть картинку {number}',
+   'image.title': 'Картинка',
    'pane.close': 'Закрыть панель',
    'pane.beside': 'Открыть рядом',
    'pane.divider': 'Граница между чатами',

@@ -22,6 +22,19 @@ type TerminalContent struct {
 	Type string `json:"type"`
 }
 
+// Image is a picture in a chat, its data in base64.
+type Image struct {
+	MimeType string `json:"mimeType"`
+	Data     string `json:"data"`
+}
+
+// ImageContent is a picture a tool gave, such as an image file the agent read.
+type ImageContent struct {
+	Type string `json:"type"`
+	Image
+}
+
+func (ImageContent) toolContent()    {}
 func (TextContent) toolContent()     {}
 func (DiffContent) toolContent()     {}
 func (TerminalContent) toolContent() {}
@@ -34,6 +47,8 @@ type UserEntry struct {
 	Text   string `json:"text"`
 	Origin string `json:"origin"`
 	Steer  bool   `json:"steer"`
+	// Images are the pictures sent with the message.
+	Images []Image `json:"images,omitempty"`
 }
 
 // TextEntry is an agent message ("agent") or its reasoning ("thought").

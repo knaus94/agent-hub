@@ -16,6 +16,7 @@ import {
 import { memo, useState } from 'react';
 import type { Entry } from '../../shared/protocol.ts';
 import { t } from '../../shared/i18n';
+import { ImageGallery } from '../../shared/ui/image-gallery';
 import { DiffView } from './diff-view';
 import { TerminalOutput } from './terminal-output';
 import './tool-call.css';
@@ -51,8 +52,9 @@ export const ToolCall = memo(function ToolCall({ entry }: { entry: ToolEntry }) 
    const isCommand = entry.toolKind === 'execute' && Boolean(entry.command);
    const title = (isCommand ? entry.command : entry.title) || entry.command || entry.toolKind;
    const showCommand = Boolean(entry.command) && !isCommand && entry.command !== entry.title;
-   const parts = entry.content.filter((part) => part.type !== 'terminal');
-   const hasBody = showCommand || Boolean(entry.output) || parts.length > 0;
+   const parts = entry.content.filter((part) => part.type !== 'terminal' && part.type !== 'image');
+   const images = entry.content.filter((part) => part.type === 'image');
+   const hasBody = showCommand || Boolean(entry.output) || parts.length > 0 || images.length > 0;
    const failedExit = entry.exitCode !== null && entry.exitCode !== 0;
 
    const summary = (
@@ -81,6 +83,7 @@ export const ToolCall = memo(function ToolCall({ entry }: { entry: ToolEntry }) 
                   <div className="tool-step-body">
                      {showCommand && <pre className="tool-step-command">{entry.command}</pre>}
                      {entry.output && <TerminalOutput output={entry.output} />}
+                     {images.length > 0 && <ImageGallery images={images} />}
                      {parts.map((part, index) =>
                         part.type === 'diff' ? (
                            <DiffView key={index} path={part.path} oldText={part.oldText} newText={part.newText} />

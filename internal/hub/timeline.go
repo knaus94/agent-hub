@@ -77,6 +77,33 @@ func textOf(raw json.RawMessage) *string {
 	return block.str("text")
 }
 
+// shownImages are the kinds of picture the web app draws; anything else in an image block is left out.
+var shownImages = map[string]bool{"image/png": true, "image/jpeg": true, "image/gif": true, "image/webp": true}
+
+func imageOf(raw json.RawMessage) *protocol.Image {
+	block := object(raw)
+	if kind := block.str("type"); kind == nil || *kind != "image" {
+		return nil
+	}
+	mime, data := deref(block.str("mimeType")), deref(block.str("data"))
+	if !shownImages[mime] || data == "" {
+		return nil
+	}
+	return &protocol.Image{MimeType: mime, Data: data}
+}
+
+func promptImages(raw json.RawMessage) []protocol.Image {
+	var blocks []json.RawMessage
+	_ = json.Unmarshal(raw, &blocks)
+	var images []protocol.Image
+	for _, block := range blocks {
+		if image := imageOf(block); image != nil {
+			images = append(images, *image)
+		}
+	}
+	return images
+}
+
 func promptText(raw json.RawMessage) string {
 	var blocks []json.RawMessage
 	_ = json.Unmarshal(raw, &blocks)
@@ -132,7 +159,9 @@ func toolContent(values []json.RawMessage) []protocol.ToolContent {
 		switch {
 		case kind == nil:
 		case *kind == "content":
-			if text := textOf(block["content"]); text != nil {
+			if image := imageOf(block["content"]); image != nil {
+				content = append(content, protocol.ImageContent{Type: "image", Image: *image})
+			} else if text := textOf(block["content"]); text != nil {
 				content = append(content, protocol.TextContent{Type: "text", Text: *text})
 			}
 		case *kind == "diff":
@@ -293,8 +322,10 @@ type session struct {
 	tools     map[string]int
 	streaming *streaming
 	echo      *string
-	reuse     *reuse
-	prompts   map[string]struct{}
+	// echoImages counts the pictures of the prompt just sent that the agent may still echo.
+	echoImages int
+	reuse      *reuse
+	prompts    map[string]struct{}
 	// Zed closed the session: its agent process no longer holds it, so nothing can be sent to it there.
 	closed  bool
 	options []option
@@ -874,10 +905,11 @@ func (t *Timeline) fromClient(src *source, from string, m *message) {
 			if from == "client" && !src.owned {
 				origin = "zed"
 			}
-			t.push(s, protocol.UserEntry{Kind: "user", ID: t.nextID(s), Text: text, Origin: origin})
+			t.push(s, protocol.UserEntry{Kind: "user", ID: t.nextID(s), Text: text, Origin: origin, Images: promptImages(params["prompt"])})
 		}
 		s.reuse = nil
 		s.echo = &text
+		s.echoImages = len(promptImages(params["prompt"]))
 		s.prompts[id] = struct{}{}
 		src.prompts[id] = sessionID
 		t.touch(s)
@@ -886,7 +918,7 @@ func (t *Timeline) fromClient(src *source, from string, m *message) {
 		if s == nil {
 			return
 		}
-		index := t.push(s, protocol.UserEntry{Kind: "user", ID: t.nextID(s), Text: promptText(params["prompt"]), Origin: "hub", Steer: true})
+		index := t.push(s, protocol.UserEntry{Kind: "user", ID: t.nextID(s), Text: promptText(params["prompt"]), Origin: "hub", Steer: true, Images: promptImages(params["prompt"])})
 		src.steers[id] = steer{s.id, index}
 	}
 }
@@ -924,7 +956,7 @@ func (t *Timeline) agentReply(src *source, m *message) {
 			return
 		}
 		delete(s.prompts, id)
-		s.echo = nil
+		s.echo, s.echoImages = nil, 0
 		stopReason := deref(result.str("stopReason"))
 		failed := present(m.Error)
 		// Codex leaves a stopped tool in progress; after an end_turn a Claude background task can still be running.
@@ -1019,7 +1051,11 @@ func (t *Timeline) fromAgent(src *source, m *message) {
 func (t *Timeline) reduce(s *session, update fields) {
 	switch deref(update.str("sessionUpdate")) {
 	case "user_message_chunk":
-		t.userChunk(s, textOf(update["content"]))
+		if image := imageOf(update["content"]); image != nil {
+			t.userImage(s, *image)
+		} else {
+			t.userChunk(s, textOf(update["content"]))
+		}
 	case "agent_message_chunk":
 		t.chunk(s, "agent", textOf(update["content"]), update.str("messageId"))
 	case "agent_thought_chunk":
@@ -1086,6 +1122,23 @@ func (t *Timeline) userChunk(s *session, text *string) {
 		}
 	}
 	index := t.push(s, protocol.UserEntry{Kind: "user", ID: t.nextID(s), Text: *text, Origin: "history"})
+	s.streaming = &streaming{kind: "user", index: index}
+}
+
+// userImage adds a picture to the user's message being replayed; one echoing the prompt just sent is already there.
+func (t *Timeline) userImage(s *session, image protocol.Image) {
+	if s.echoImages > 0 {
+		s.echoImages--
+		return
+	}
+	if s.streaming != nil && s.streaming.kind == "user" {
+		if user, ok := s.entries[s.streaming.index].(protocol.UserEntry); ok {
+			user.Images = append(user.Images, image)
+			t.replace(s, s.streaming.index, user)
+			return
+		}
+	}
+	index := t.push(s, protocol.UserEntry{Kind: "user", ID: t.nextID(s), Origin: "history", Images: []protocol.Image{image}})
 	s.streaming = &streaming{kind: "user", index: index}
 }
 

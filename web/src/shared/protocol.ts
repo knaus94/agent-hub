@@ -5,8 +5,14 @@ export type AgentKind = 'claude' | 'codex' | 'opencode' | 'other';
 
 export type ToolStatus = 'pending' | 'in_progress' | 'completed' | 'failed';
 
+// A picture in a chat, its data in base64.
+export type Image = { mimeType: string; data: string };
+
 export type ToolContent =
-   { type: 'text'; text: string } | { type: 'diff'; path: string; oldText: string | null; newText: string } | { type: 'terminal' };
+   | { type: 'text'; text: string }
+   | { type: 'diff'; path: string; oldText: string | null; newText: string }
+   | { type: 'terminal' }
+   | ({ type: 'image' } & Image);
 
 // rate-limited: the account is out of its limits; detail is when they reset, RFC 3339.
 export type NoticeCode = 'cancelled' | 'turn-failed' | 'rate-limited' | 'steer-failed' | 'history-cut';
@@ -57,7 +63,8 @@ export type ConfigOption = {
 };
 
 export type Entry =
-   | { kind: 'user'; id: string; text: string; origin: 'zed' | 'hub' | 'history'; steer: boolean }
+   // images: the pictures sent with the message.
+   | { kind: 'user'; id: string; text: string; origin: 'zed' | 'hub' | 'history'; steer: boolean; images?: Image[] }
    | { kind: 'agent'; id: string; text: string }
    | { kind: 'thought'; id: string; text: string }
    | {

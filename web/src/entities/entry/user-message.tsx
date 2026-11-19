@@ -1,6 +1,7 @@
 import { memo } from 'react';
 import type { Entry } from '../../shared/protocol.ts';
 import { t } from '../../shared/i18n';
+import { ImageGallery } from '../../shared/ui/image-gallery';
 import './user-message.css';
 
 type UserEntry = Extract<Entry, { kind: 'user' }>;
@@ -9,7 +10,8 @@ type UserEntry = Extract<Entry, { kind: 'user' }>;
 export const UserMessage = memo(function UserMessage({ entry }: { entry: UserEntry }) {
    return (
       <div className="user-message" data-steer={entry.steer}>
-         <p className="user-message-bubble">{entry.text}</p>
+         {entry.images && entry.images.length > 0 && <ImageGallery images={entry.images} />}
+         {entry.text && <p className="user-message-bubble">{entry.text}</p>}
          {entry.steer && <span className="user-message-tag">{t('entry.user.steer')}</span>}
       </div>
    );
