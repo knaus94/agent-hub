@@ -959,14 +959,22 @@ func (t *Timeline) agentReply(src *source, m *message) {
 		s.echo, s.echoImages = nil, 0
 		stopReason := deref(result.str("stopReason"))
 		failed := present(m.Error)
+		limit := object(m.Error).object("data")
+		// Claude's adapter fails a turn that ended normally when one of its tool calls got no result, such as a server
+		// tool cut off by a compaction; the answer itself is whole.
+		unfinished := failed && deref(limit.str("errorKind")) == "incomplete_tool_call"
+		if unfinished {
+			failed, stopReason = false, "end_turn"
+		}
 		// Codex leaves a stopped tool in progress; after an end_turn a Claude background task can still be running.
 		if failed || stopReason == "cancelled" {
 			t.stopTools(s)
 		}
 		t.closeQuestions(s)
 		// An account out of its limits says when it runs again; a client can offer another agent meanwhile.
-		limit := object(m.Error).object("data")
 		switch {
+		case unfinished:
+			t.notice(s, "tool-unfinished", nil)
 		case failed && deref(limit.str("errorKind")) == "rate_limit":
 			t.notice(s, "rate-limited", resetTime(limit.object("rateLimit").number("resetsAt")))
 		case failed:

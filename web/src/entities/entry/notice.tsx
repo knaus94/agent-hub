@@ -14,6 +14,7 @@ const TONES = {
    'rate-limited': 'error',
    'steer-failed': 'error',
    'history-cut': 'info',
+   'tool-unfinished': 'info',
 } as const;
 
 const clock = new Intl.DateTimeFormat(locale, { hour: '2-digit', minute: '2-digit' });

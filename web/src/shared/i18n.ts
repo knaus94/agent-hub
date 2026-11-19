@@ -77,6 +77,7 @@ const ru = {
    'notice.transfer': 'Продолжить в другом агенте',
    'notice.steer-failed': 'Поправка не дошла до агента',
    'notice.history-cut': 'Начало этой истории не сохранилось',
+   'notice.tool-unfinished': 'Ход завершён, но один из инструментов не вернул результат',
    'question.permission': 'Разрешить?',
    'question.form': 'Вопрос агента',
    'question.url': 'Агент просит открыть ссылку',

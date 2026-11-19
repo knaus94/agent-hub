@@ -15,7 +15,7 @@ export type ToolContent =
    | ({ type: 'image' } & Image);
 
 // rate-limited: the account is out of its limits; detail is when they reset, RFC 3339.
-export type NoticeCode = 'cancelled' | 'turn-failed' | 'rate-limited' | 'steer-failed' | 'history-cut';
+export type NoticeCode = 'cancelled' | 'turn-failed' | 'rate-limited' | 'steer-failed' | 'history-cut' | 'tool-unfinished';
 
 // Where a chat can be moved: "full" continues the whole conversation on another Claude account, "retell" starts a
 // new chat with its history.
