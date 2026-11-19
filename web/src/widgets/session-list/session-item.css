@@ -31,6 +31,10 @@
    background: var(--color-surface-raised);
 }
 
+.session-item[data-shown='true'] {
+   border-color: var(--color-border);
+}
+
 .session-item[data-running='true'] {
    border-color: var(--color-accent-soft);
 }

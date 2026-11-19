@@ -8,7 +8,7 @@ test.beforeEach(async ({ page }) => login(page));
 test('a chat started here streams its reply and shows in the list', async ({ page }) => {
    await startChat(page, 'привет один');
    await expect(page.getByRole('main').getByText('Ответ: привет один')).toBeVisible();
-   await expect(listed(page, /привет один/)).toHaveAttribute('aria-current', 'page');
+   await expect(listed(page, 'привет один')).toHaveAttribute('aria-current', 'page');
 });
 
 test('a permission is answered in its chat', async ({ page }) => {
@@ -31,7 +31,7 @@ test('the list puts another chat in place of the open one', async ({ page }) => 
    await expect(page.getByRole('main').getByText('Ответ: первый чат')).toBeVisible();
    await startChat(page, 'второй чат');
    await expect(page.getByRole('main').getByText('Ответ: второй чат')).toBeVisible();
-   await listed(page, /первый чат/).click();
+   await listed(page, 'первый чат').click();
    await expect(page.getByRole('main').getByText('Ответ: первый чат')).toBeVisible();
    await expect(page.getByRole('main').getByText('Ответ: второй чат')).toBeHidden();
    await composer(page).fill('ещё раз');

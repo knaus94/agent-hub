@@ -1,0 +1,83 @@
+.panes {
+   display: grid;
+   height: 100%;
+   isolation: isolate;
+}
+
+.pane {
+   position: relative;
+   min-width: 0;
+   min-height: 0;
+}
+
+/* With chats side by side, the one in use is marked along its top, over the pane's own bar. */
+.pane[data-focused='true']::after {
+   content: '';
+   position: absolute;
+   z-index: 1;
+   inset-block-start: 0;
+   inset-inline: 0;
+   height: var(--space-half);
+   background: var(--color-accent);
+   pointer-events: none;
+}
+
+/* A hairline between panes, grabbed by a wider strip around it. */
+.panes-divider {
+   position: relative;
+   z-index: 2;
+   width: 1px;
+   background: var(--color-border);
+   cursor: col-resize;
+   touch-action: none;
+   transition: background var(--motion-fast) var(--ease-out);
+}
+
+/* A chat dragged near a border goes to the pane under it, not to the border. */
+.panes-divider[data-dropping='true'] {
+   pointer-events: none;
+}
+
+.panes-divider::before {
+   content: '';
+   position: absolute;
+   inset-block: 0;
+   inset-inline: calc(var(--space-1) * -1);
+}
+
+.panes-divider:focus-visible,
+.panes-divider:active {
+   background: var(--color-accent);
+}
+
+@media (hover: hover) {
+   .panes-divider:hover {
+      background: var(--color-accent-line);
+   }
+}
+
+/* Where a chat dragged from the list would go: beside the pane at either edge, in its place in the middle. */
+.pane-drop {
+   position: absolute;
+   z-index: 3;
+   inset-block: 0;
+   inset-inline: 0;
+   border: 1px solid var(--color-accent-line);
+   border-radius: var(--radius-md);
+   background: var(--color-accent-soft);
+   pointer-events: none;
+}
+
+.pane-drop[data-zone='before'] {
+   inset-inline-end: 50%;
+}
+
+.pane-drop[data-zone='after'] {
+   inset-inline-start: 50%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+   .panes-divider {
+      transition: none;
+   }
+}

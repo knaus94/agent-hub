@@ -87,6 +87,8 @@ type HubState = {
    focusPane: (index: number) => void;
    // Opens a chat in a new pane at index, or puts the pane it is in to use.
    openBeside: (chat: Pane, index: number) => void;
+   // Puts a chat in the pane at index in place of its chat, or puts the pane it is in to use.
+   showIn: (index: number, chat: Pane) => void;
    closePane: (index: number) => void;
    setShown: (shown: number) => void;
 };
@@ -136,6 +138,11 @@ export function shownPanes(count: number, focused: number, shown: number) {
    const size = Math.min(count, Math.max(shown, 1));
    const first = Math.min(Math.max(focused - size + 1, 0), count - size);
    return Array.from({ length: size }, (_, index) => first + index);
+}
+
+// roomBeside is whether another pane fits on screen beside those open.
+export function roomBeside(state: { panes: Pane[]; shown: number }) {
+   return state.panes.length < Math.min(state.shown, MAX_PANES);
 }
 
 // A link printed by the hub carries the token once; keep it and drop it from the address bar.
@@ -329,6 +336,14 @@ export const useHub = create<HubState>()((set, get) => ({
       if (panes.length >= MAX_PANES) return;
       const place = Math.min(Math.max(index, 0), panes.length);
       set({ panes: panes.toSpliced(place, 0, chat), focused: place, openId: chat, drawerOpen: false });
+      writeHash(chat);
+   },
+   showIn: (index, chat) => {
+      const { panes } = get();
+      const at = panes.indexOf(chat);
+      if (at >= 0) return get().focusPane(at);
+      if (index < 0 || index >= panes.length) return;
+      set({ panes: panes.with(index, chat), focused: index, openId: chat, drawerOpen: false, file: null });
       writeHash(chat);
    },
    closePane: (index) => {

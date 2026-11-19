@@ -1,11 +1,12 @@
 import { LoaderCircle, MessageSquareDashed } from 'lucide-react';
-import { useHub } from '../../entities/hub/hub-store';
+import { useHub, type Pane } from '../../entities/hub/hub-store';
 import { t } from '../../shared/i18n';
 import { FileViewer } from '../../features/file-viewer/file-viewer';
 import { useWide } from '../../shared/lib/use-wide';
 import { AppBar } from '../../widgets/app-bar/app-bar';
 import { Chat } from '../../widgets/chat/chat';
 import { Drawer } from '../../widgets/drawer/drawer';
+import { Panes } from '../../widgets/panes/panes';
 import { SessionList } from '../../widgets/session-list/session-list';
 import { NewChatPage } from '../new-chat/new-chat-page';
 import './hub-page.css';
@@ -24,22 +25,19 @@ function Placeholder({ waiting }: { waiting: boolean }) {
    );
 }
 
-// The screen is always a chat, as in a chat app: an open one, or a new one. The list sits beside it on a wide screen
-// and behind the menu on a phone.
+// The screen is always chats, as in a chat app: open ones side by side as the width allows, or a new one. The list
+// sits beside them on a wide screen and behind the menu on a phone.
 export function HubPage() {
    const wide = useWide();
-   const openId = useHub((state) => state.openId);
    const startedId = useHub((state) => state.startedId);
    const sessions = useHub((state) => state.sessions);
    const connection = useHub((state) => state.connection);
-   const open = sessions.find((session) => session.id === openId) ?? null;
-   const main = open ? (
-      <Chat key={open.id} session={open} />
-   ) : openId ? (
-      <Placeholder waiting={connection !== 'open' || openId === startedId} />
-   ) : (
-      <NewChatPage />
-   );
+   const pane = (chat: Pane) => {
+      const open = sessions.find((session) => session.id === chat);
+      if (open) return <Chat session={open} />;
+      if (chat) return <Placeholder waiting={connection !== 'open' || chat === startedId} />;
+      return <NewChatPage />;
+   };
 
    return (
       <div className="hub-page" data-layout={wide ? 'split' : 'single'}>
@@ -53,7 +51,9 @@ export function HubPage() {
                <SessionList />
             </aside>
          )}
-         <main className="hub-page-main">{main}</main>
+         <main className="hub-page-main">
+            <Panes render={pane} />
+         </main>
          <FileViewer />
          {!wide && <Drawer />}
       </div>

@@ -18,12 +18,24 @@ export async function startChat(page, text) {
    const input = composer(page.locator('.new-chat'));
    await expect(input).toBeEnabled();
    await input.fill(text);
-   await input.press('Enter');
+   // Enter starts a new line on a touch keyboard; the button sends everywhere.
+   await page.locator('.new-chat').getByRole('button', { name: 'Отправить' }).click();
    await expect(page).toHaveURL(/#\/s\//);
    return decodeURIComponent(new URL(page.url()).hash.slice('#/s/'.length));
 }
 
-// The chat's row in the list.
+// The link of the chat titled `title` in the list.
 export function listed(page, title) {
-   return page.locator('.session-list').getByRole('link', { name: title });
+   return page.locator('.session-list a.session-item').filter({ has: page.getByTitle(title, { exact: true }) });
+}
+
+// The pane showing the chat titled `title`.
+export function pane(page, title) {
+   return page.locator('.pane').filter({ has: page.getByRole('heading', { name: title, exact: true }) });
+}
+
+// Sends a message from a pane's composer.
+export async function sendIn(scope, text) {
+   await composer(scope).fill(text);
+   await composer(scope).press('Enter');
 }

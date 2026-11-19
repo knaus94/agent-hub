@@ -148,7 +148,11 @@
    align-items: center;
 }
 
-.session-list-row-archive {
+.session-list-row-actions {
+   display: flex;
+}
+
+.session-list-row-action {
    display: grid;
    place-items: center;
    width: var(--size-touch);
@@ -161,40 +165,41 @@
    cursor: pointer;
    transition:
       background var(--motion-fast) var(--ease-out),
-      color var(--motion-fast) var(--ease-out),
-      opacity var(--motion-fast) var(--ease-out);
+      color var(--motion-fast) var(--ease-out);
 }
 
-.session-list-row-archive:active {
+.session-list-row-action:active {
    background: var(--color-surface-hover);
 }
 
-.session-list-row-archive-icon {
+.session-list-row-action-icon {
    width: var(--size-icon);
    height: var(--size-icon);
 }
 
-/* With a mouse the button waits over the row's end until the row is pointed at or focused. */
+/* With a mouse the buttons wait over the row's end until the row is pointed at or focused. */
 @media (hover: hover) {
    .session-list-row {
       grid-template-columns: minmax(0, 1fr);
    }
 
-   .session-list-row-archive {
+   .session-list-row-actions {
       position: absolute;
       inset-inline-end: var(--space-2);
+      border-radius: var(--radius-md);
       background: var(--color-surface-raised);
       opacity: 0;
       pointer-events: none;
+      transition: opacity var(--motion-fast) var(--ease-out);
    }
 
-   .session-list-row:hover .session-list-row-archive,
-   .session-list-row:focus-within .session-list-row-archive {
+   .session-list-row:hover .session-list-row-actions,
+   .session-list-row:focus-within .session-list-row-actions {
       opacity: 1;
       pointer-events: auto;
    }
 
-   .session-list-row-archive:hover {
+   .session-list-row-action:hover {
       background: var(--color-surface-hover);
       color: var(--color-text);
    }
@@ -297,7 +302,8 @@
    .session-list-new,
    .session-list-archive-toggle,
    .session-list-archive-chevron,
-   .session-list-row-archive {
+   .session-list-row-action,
+   .session-list-row-actions {
       transition: none;
    }
 

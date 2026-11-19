@@ -11,7 +11,18 @@ import './session-item.css';
 
 const ACTIVITY_ICONS = { thinking: Brain, tool: SquareTerminal, writing: PenLine, waiting: CircleHelp } as const;
 
-export const SessionItem = memo(function SessionItem({ session, active, now }: { session: SessionSummary; active: boolean; now: number }) {
+// active is the chat in use; shown, one on screen beside it.
+export const SessionItem = memo(function SessionItem({
+   session,
+   active,
+   shown = false,
+   now,
+}: {
+   session: SessionSummary;
+   active: boolean;
+   shown?: boolean;
+   now: number;
+}) {
    const title = sessionTitle(session);
    const activity = session.online && session.status === 'running' ? (session.activity ?? 'thinking') : null;
    const ActivityIcon = activity ? ACTIVITY_ICONS[activity] : null;
@@ -21,6 +32,7 @@ export const SessionItem = memo(function SessionItem({ session, active, now }: {
          href={`#/s/${encodeURIComponent(session.id)}`}
          aria-current={active ? 'page' : undefined}
          data-active={active}
+         data-shown={shown && !active}
          data-running={Boolean(activity)}
       >
          <AgentMark agent={session.agent} />

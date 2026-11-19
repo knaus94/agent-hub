@@ -1,7 +1,8 @@
-import { Archive, ArchiveRestore, ChevronDown, LogOut, MessagesSquare, SquarePen } from 'lucide-react';
+import { Archive, ArchiveRestore, ChevronDown, Columns2, LogOut, MessagesSquare, SquarePen } from 'lucide-react';
 import { useId, useMemo, useState } from 'react';
 import type { SessionSummary } from '../../shared/protocol.ts';
-import { useHub } from '../../entities/hub/hub-store';
+import { roomBeside, shownPanes, useHub } from '../../entities/hub/hub-store';
+import { CHAT_DRAG } from '../../entities/session/chat-drag';
 import { NotificationsToggle } from '../../features/notifications/notifications-toggle';
 import { t } from '../../shared/i18n';
 import { projectName } from '../../shared/lib/format';
@@ -24,23 +25,51 @@ function groupByProject(sessions: SessionSummary[]) {
    return [...groups.values()];
 }
 
-// A chat in the list, with its archive button: always there on a touch screen, on hover or focus with a mouse.
+// A chat in the list, with its buttons: always there on a touch screen, on hover or focus with a mouse. Dragged onto
+// the chats, or clicked with Ctrl, it opens beside them.
 function SessionRow({ session, openId, now }: { session: SessionSummary; openId: string | null; now: number }) {
    const archive = useHub((state) => state.archive);
+   const openBeside = useHub((state) => state.openBeside);
+   const focused = useHub((state) => state.focused);
+   const room = useHub(roomBeside);
+   const shown = useHub((state) =>
+      shownPanes(state.panes.length, state.focused, state.shown).some((index) => state.panes[index] === session.id),
+   );
    const label = t(session.archived ? 'chat.unarchive' : 'chat.archive');
    const Icon = session.archived ? ArchiveRestore : Archive;
+   const beside = () => openBeside(session.id, focused + 1);
    return (
-      <li className="session-list-row">
-         <SessionItem session={session} active={session.id === openId} now={now} />
-         <button
-            className="session-list-row-archive"
-            type="button"
-            onClick={() => archive(session.id, !session.archived)}
-            aria-label={label}
-            title={label}
-         >
-            <Icon className="session-list-row-archive-icon" aria-hidden="true" />
-         </button>
+      <li
+         className="session-list-row"
+         onDragStart={(event) => {
+            event.dataTransfer.setData(CHAT_DRAG, session.id);
+            event.dataTransfer.effectAllowed = 'move';
+         }}
+         onClick={(event) => {
+            // Without room, Ctrl opens the chat in a new browser tab, as for any link.
+            if (!(event.ctrlKey || event.metaKey) || !(room || shown) || !(event.target instanceof Element) || !event.target.closest('a'))
+               return;
+            event.preventDefault();
+            beside();
+         }}
+      >
+         <SessionItem session={session} active={session.id === openId} shown={shown} now={now} />
+         <span className="session-list-row-actions">
+            {room && !shown && (
+               <button className="session-list-row-action" type="button" onClick={beside} aria-label={t('pane.beside')} title={t('pane.beside')}>
+                  <Columns2 className="session-list-row-action-icon" aria-hidden="true" />
+               </button>
+            )}
+            <button
+               className="session-list-row-action"
+               type="button"
+               onClick={() => archive(session.id, !session.archived)}
+               aria-label={label}
+               title={label}
+            >
+               <Icon className="session-list-row-action-icon" aria-hidden="true" />
+            </button>
+         </span>
       </li>
    );
 }

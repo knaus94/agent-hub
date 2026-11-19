@@ -9,6 +9,7 @@ agent-hub sits between Zed and its ACP agents (Claude Code, Codex and others). F
 - answer the agent's questions and permission requests;
 - start new chats in any project, with the agent's own models, effort levels, modes and slash commands;
 - see how much of the week each Claude and Codex subscription has spent, with a forecast;
+- open up to four chats side by side on a wide screen: drag one from the list, Ctrl-click it or use its "open beside" button;
 - read the Markdown files a chat mentions, such as plans and briefs, rendered: tap the path in the agent's message;
 - archive chats, keep quick-action buttons, dictate by voice and get push notifications when a turn ends.
 
@@ -105,4 +106,10 @@ Then put back Zed's settings from the backup, or remove `agent-hub` and `relay <
 
 ## Development
 
-`make check` runs gofmt, go vet and the TypeScript check; `make build` builds `dist/agent-hub` with the web app inside.
+`make check` runs gofmt, go vet, the Go tests and the TypeScript check; `make build` builds `dist/agent-hub` with the web
+app inside.
+
+`make e2e` builds the hub and runs the web app's end-to-end tests in Chromium and WebKit against a hub of their own on
+port 8897, in a scratch home under the system's temporary directory, with a stand-in agent instead of Claude or Codex.
+Install the browsers once with `cd web && npx playwright install chromium webkit`; where WebKit lacks system libraries,
+`npx playwright install-deps webkit` adds them.
